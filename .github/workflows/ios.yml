@@ -1,0 +1,14 @@
+name: iPhone shell checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test persistence and build simulator app
+        run: bash Scripts/check.sh

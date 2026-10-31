@@ -1,0 +1,16 @@
+.DS_Store
+.build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+.env
+.env.*
+!.env.example
+*.p12
+*.mobileprovision
+AuthKey_*.p8
+Data/Private/
+conversations.json
+chat.html
+*.xcarchive
+*.ipa
