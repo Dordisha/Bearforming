@@ -121,7 +121,7 @@ private struct LiveSetField: View {
                 .onChange(of: value) { _, newValue in
                     // Preserve partial decimal input such as "60." during typing.
                     let normalized = draft.replacingOccurrences(of: Locale.current.decimalSeparator ?? ".", with: ".")
-                    if (draft.isEmpty ? 0 : Double(normalized)) != newValue {
+                    if (draft.isEmpty ? Optional(0.0) : Double(normalized)) != Optional(newValue) {
                         draft = display(newValue)
                     }
                 }
