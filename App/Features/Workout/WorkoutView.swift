@@ -5,6 +5,7 @@ struct WorkoutView: View {
     @EnvironmentObject var store: WorkoutStore
     @State private var exerciseName = ""
     @State private var finishConfirmation = false
+    @FocusState private var keyboardFocused: Bool
     var body: some View {
         NavigationStack {
             Group {
@@ -28,11 +29,13 @@ struct WorkoutView: View {
                                 ForEach(Array(exercise.sets.enumerated()), id: \.element.id) { si, set in
                                     HStack {
                                         Text("\(si + 1)").foregroundStyle(.secondary)
-                                        TextField("Reps", value: Binding(get: { store.state.active?.exercises[ei].sets[si].reps ?? 0 }, set: { value in store.update { $0.active?.exercises[ei].sets[si].reps = min(999, max(0, value)) } }), format: .number)
-                                            .keyboardType(.numberPad).accessibilityLabel("Set \(si + 1) reps")
+                                        LiveSetField(title: "Reps", value: Double(set.reps), maximum: 999, integerOnly: true) { value in
+                                            store.update { $0.active?.exercises[ei].sets[si].reps = Int(value) }
+                                        }.focused($keyboardFocused)
                                         Text("×")
-                                        TextField("Weight", value: Binding(get: { store.state.active?.exercises[ei].sets[si].weight ?? 0 }, set: { value in store.update { $0.active?.exercises[ei].sets[si].weight = value.isFinite ? min(9999, max(0, value)) : 0 } }), format: .number)
-                                            .keyboardType(.decimalPad).accessibilityLabel("Set \(si + 1) weight in pounds")
+                                        LiveSetField(title: "Weight in pounds", value: set.weight, maximum: 9999, integerOnly: false) { value in
+                                            store.update { $0.active?.exercises[ei].sets[si].weight = value }
+                                        }.focused($keyboardFocused)
                                         Text("lb").font(.caption)
                                         Button {
                                             store.update { state in
@@ -70,6 +73,12 @@ struct WorkoutView: View {
                     }.scrollDismissesKeyboard(.interactively)
                 } else { ContentUnavailableView("Ready when you are", systemImage: "dumbbell", description: Text("Start a session from Today.")) }
             }.navigationTitle("Workout")
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") { keyboardFocused = false }
+                }
+            }
             .confirmationDialog("Save this workout to Journey?", isPresented: $finishConfirmation, titleVisibility: .visible) {
                 Button("Finish and save") { store.update { state in
                     guard var finished = state.active else { return }
@@ -78,5 +87,53 @@ struct WorkoutView: View {
                 Button("Keep training", role: .cancel) {}
             }
         }
+    }
+}
+
+// String-backed input persists each valid edit without waiting for focus to leave.
+private struct LiveSetField: View {
+    let title: String
+    let value: Double
+    let maximum: Double
+    let integerOnly: Bool
+    let save: (Double) -> Void
+    @State private var draft = ""
+    @State private var invalid = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            TextField(title, text: $draft)
+                .keyboardType(integerOnly ? .numberPad : .decimalPad)
+                .accessibilityLabel(title)
+                .onAppear { draft = display(value) }
+                .onChange(of: draft) { _, text in
+                    let separator = Locale.current.decimalSeparator ?? "."
+                    let normalized = text.replacingOccurrences(of: separator, with: ".")
+                    let parsed = text.isEmpty ? 0 : Double(normalized)
+                    guard let number = parsed, number.isFinite, number >= 0,
+                          number <= maximum, !integerOnly || number.rounded() == number else {
+                        invalid = true
+                        return
+                    }
+                    invalid = false
+                    if number != value { save(number) }
+                }
+                .onChange(of: value) { _, newValue in
+                    // Preserve partial decimal input such as "60." during typing.
+                    let normalized = draft.replacingOccurrences(of: Locale.current.decimalSeparator ?? ".", with: ".")
+                    if (draft.isEmpty ? 0 : Double(normalized)) != newValue {
+                        draft = display(newValue)
+                    }
+                }
+            if invalid {
+                Text("Enter 0–\(Int(maximum))\(integerOnly ? " whole reps" : " lb"). Not saved.")
+                    .font(.caption2).foregroundStyle(.red)
+            }
+        }
+    }
+
+    private func display(_ number: Double) -> String {
+        number == 0 ? "" : (number.rounded() == number ? String(Int(number)) : String(number))
+            .replacingOccurrences(of: ".", with: Locale.current.decimalSeparator ?? ".")
     }
 }
