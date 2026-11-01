@@ -3,10 +3,27 @@ import SwiftUI
 struct TodayView: View {
     @EnvironmentObject var store: WorkoutStore
     @Binding var selectedTab: Int
+    private var profile: TrainingProfile { store.state.profile ?? TrainingProfile() }
+    private var preview: [Exercise] { store.state.plannedExercises ?? plan.exercises }
+    private func editPreview(_ change: (inout [Exercise]) -> Void) {
+        var items = preview
+        change(&items)
+        store.update { $0.plannedExercises = items }
+    }
+    private func optionalSetting<T>(_ key: WritableKeyPath<TrainingProfile, T?>, fallback: T) -> Binding<T> {
+        Binding(get: { profile[keyPath: key] ?? fallback }, set: { value in
+            store.update { state in
+                var updated = state.profile ?? TrainingProfile()
+                updated[keyPath: key] = value
+                state.profile = updated
+                state.plannedExercises = nil
+            }
+        })
+    }
     private var plan: TrainingPlan { TrainingPlan(state: store.state) }
     private func setting<T>(_ key: WritableKeyPath<TrainingProfile, T>, fallback: T) -> Binding<T> {
         Binding(get: { (store.state.profile ?? TrainingProfile())[keyPath: key] }, set: { value in
-            store.update { state in var profile = state.profile ?? TrainingProfile(); profile[keyPath: key] = value; state.profile = profile }
+            store.update { state in var profile = state.profile ?? TrainingProfile(); profile[keyPath: key] = value; state.profile = profile; state.plannedExercises = nil }
         })
     }
     var body: some View {
@@ -22,16 +39,54 @@ struct TodayView: View {
                     Picker("Equipment", selection: setting(\.equipment, fallback: "Gym")) { ForEach(["Gym", "Dumbbells", "Bodyweight"], id: \.self) { Text($0) } }
                     Picker("Feeling", selection: setting(\.readiness, fallback: "Ready")) { ForEach(["Ready", "Low energy", "Pain or unwell"], id: \.self) { Text($0) } }
                 }
-                Section("Suggested session") {
-                    ForEach(plan.names, id: \.self) { Text($0) }
+                Section("Session preferences") {
+                    Picker("Focus", selection: optionalSetting(\.focus, fallback: "Full body")) {
+                        ForEach(["Full body", "Upper", "Lower", "Push", "Pull"], id: \.self) { Text($0) }
+                    }
+                    Stepper("Target: \(profile.targetCount ?? (profile.minutes < 35 ? 4 : 6)) exercises",
+                            value: optionalSetting(\.targetCount, fallback: profile.minutes < 35 ? 4 : 6), in: 3...7)
+                    Toggle("Warmup / cycling already done", isOn: optionalSetting(\.warmedUp, fallback: false))
+                    Toggle("Returning after a break", isOn: optionalSetting(\.returning, fallback: false))
+                }
+                Section("Session preview") {
+                    ForEach(preview) { exercise in
+                        VStack(alignment: .leading) {
+                            Text(exercise.name).font(.headline)
+                            Text("\(exercise.sets.count) sets").font(.caption)
+                            HStack {
+                                Menu("Substitute") {
+                                    ForEach(ExerciseCatalog.choices(profile).filter { option in !preview.contains { $0.name == option.name } }) { option in
+                                        Button(option.name) {
+                                            editPreview { items in
+                                                if let index = items.firstIndex(where: { $0.id == exercise.id }) {
+                                                    items[index] = Exercise(name: option.name, sets: exercise.sets)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                Button("Remove", role: .destructive) { editPreview { $0.removeAll { $0.id == exercise.id } } }
+                            }.buttonStyle(.borderless)
+                        }
+                    }.onMove { source, destination in editPreview { $0.move(fromOffsets: source, toOffset: destination) } }
+                    Menu("Add exercise") {
+                        ForEach(ExerciseCatalog.choices(profile).filter { option in !preview.contains { $0.name == option.name } }) { option in
+                            Button(option.name) { editPreview { $0.append(Exercise(name: option.name)) } }
+                        }
+                    }
+                    Text("Estimated total: \(TrainingPlan.estimate(preview, profile: profile)) minutes • \(profile.warmedUp == true ? 0 : 5) minutes warmup")
+                    if TrainingPlan.estimate(preview, profile: profile) > profile.minutes {
+                        Text("Your edits exceed the available time. Remove exercises or increase your time budget.").foregroundStyle(.orange)
+                    }
+                    Button("Reset suggestion") { store.update { $0.plannedExercises = nil } }
                     Text(plan.explanation).font(.footnote).foregroundStyle(.secondary)
                     Text("Adjust exercises and sets in Workout. Goal is recorded for context; this starter planner does not yet prescribe goal-specific progression.").font(.caption)
                     Button(store.state.active == nil ? "Start workout" : "Resume workout") {
-                        if store.state.active == nil { store.update { $0.active = Workout(exercises: plan.names.map { Exercise(name: $0) }) } }
+                        if store.state.active == nil { store.update { $0.active = Workout(exercises: preview) } }
                         if store.error == nil { selectedTab = 1 }
-                    }.disabled(store.state.active == nil && plan.names.isEmpty)
+                    }.disabled(store.state.active == nil && (preview.isEmpty || profile.readiness == "Pain or unwell"))
                 }
-            }.navigationTitle("Today")
+            }.navigationTitle("Today").toolbar { EditButton() }
         }
     }
 }

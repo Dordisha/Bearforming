@@ -23,6 +23,7 @@ public struct Workout: Codable, Identifiable, Equatable {
     public init(exercises: [Exercise]) { self.exercises = exercises }
 }
 public struct FitnessState: Codable, Equatable {
+    public var plannedExercises: [Exercise]?
     public var entries: [JourneyEntry]?
     public var profile: TrainingProfile?
     public var schemaVersion = 1
@@ -68,28 +69,85 @@ public struct JourneyEntry: Codable, Identifiable, Equatable {
     public init() {}
 }
 public struct TrainingProfile: Codable, Equatable {
+    public var focus: String?
+    public var targetCount: Int?
+    public var warmedUp: Bool?
+    public var returning: Bool?
     public var minutes = 40
     public var equipment = "Gym"
     public var goal = "Build consistency"
     public var readiness = "Ready"
     public init() {}
 }
+public struct ExerciseOption: Identifiable {
+    public var id: String { name }
+    public let name: String
+    public let group: String
+    public let equipment: String
+}
+public enum ExerciseCatalog {
+    public static let all: [ExerciseOption] = [
+        .init(name: "Leg press", group: "Lower", equipment: "Gym"),
+        .init(name: "Dumbbell bench press", group: "Push", equipment: "Dumbbells"),
+        .init(name: "Seated row", group: "Pull", equipment: "Gym"),
+        .init(name: "Leg curl", group: "Lower", equipment: "Gym"),
+        .init(name: "Lateral raise", group: "Push", equipment: "Dumbbells"),
+        .init(name: "Dumbbell curl", group: "Pull", equipment: "Dumbbells"),
+        .init(name: "Dead bug", group: "Core", equipment: "Bodyweight"),
+        .init(name: "Lat pulldown", group: "Pull", equipment: "Gym"),
+        .init(name: "Rope triceps pushdown", group: "Push", equipment: "Gym"),
+        .init(name: "Leg extension", group: "Lower", equipment: "Gym"),
+        .init(name: "Dumbbell shoulder press", group: "Push", equipment: "Dumbbells"),
+        .init(name: "Goblet squat", group: "Lower", equipment: "Dumbbells"),
+        .init(name: "Dumbbell row", group: "Pull", equipment: "Dumbbells"),
+        .init(name: "Dumbbell floor press", group: "Push", equipment: "Dumbbells"),
+        .init(name: "Glute bridge", group: "Lower", equipment: "Bodyweight"),
+        .init(name: "Bodyweight squat", group: "Lower", equipment: "Bodyweight"),
+        .init(name: "Wall push-up", group: "Push", equipment: "Bodyweight"),
+        .init(name: "Bird dog", group: "Core", equipment: "Bodyweight"),
+        .init(name: "Standing calf raise", group: "Lower", equipment: "Bodyweight")
+    ]
+    public static func choices(_ profile: TrainingProfile) -> [ExerciseOption] {
+        all.filter { item in
+            let equipment = profile.equipment == "Gym" || item.equipment == "Bodyweight" || item.equipment == profile.equipment
+            let focus = profile.focus ?? "Full body"
+            let matches = focus == "Full body" || item.group == focus || (focus == "Upper" && ["Push", "Pull", "Core"].contains(item.group))
+            return equipment && matches
+        }
+    }
+}
 public struct TrainingPlan {
-    public var names: [String]
+    public var exercises: [Exercise]
+    public var names: [String] { exercises.map(\.name) }
     public var explanation: String
+    public static func estimate(_ exercises: [Exercise], profile: TrainingProfile) -> Int {
+        let seconds = exercises.reduce(0.0) { total, exercise in
+            total + exercise.sets.reduce(0.0) { $0 + Double(max(1, $1.reps)) * 4 }
+                + Double(max(0, exercise.sets.count - 1)) * 90 + 60
+        }
+        return Int(ceil(seconds / 60)) + (profile.warmedUp == true ? 0 : 5)
+    }
     public init(state: FitnessState, now: Date = Date()) {
         let profile = state.profile ?? TrainingProfile()
+        exercises = []
         if profile.readiness == "Pain or unwell" {
-            names = []; explanation = "Pause workout planning while you feel pain or unwell. Reassess when you feel ready; this app cannot assess symptoms."; return
+            explanation = "Pause planning while you feel pain or unwell. This app cannot assess symptoms."; return
         }
         let recent = state.history.filter { now.timeIntervalSince($0.startedAt) >= 0 && now.timeIntervalSince($0.startedAt) < 172800 }
         let trained = Set(recent.flatMap { $0.exercises.filter { $0.sets.contains { $0.completedAt != nil } }.map(\.name) })
-        let catalog = profile.equipment == "Gym" ? ["Leg press", "Seated row", "Dumbbell bench press", "Leg curl", "Lat pulldown"] : profile.equipment == "Dumbbells" ? ["Goblet squat", "Dumbbell row", "Dumbbell floor press"] : ["Bodyweight squat", "Wall push-up", "Glute bridge"]
-        let available = catalog.filter { !trained.contains($0) }
-        let count = profile.minutes < 25 || profile.readiness == "Low energy" ? 2 : 3
-        names = Array(available.prefix(count))
-        explanation = "A starter session for \(profile.minutes) minutes with \(profile.equipment.lowercased()) equipment. Goal: \(profile.goal). Exercises logged in the last 48 hours are excluded. \(profile.readiness == "Low energy" ? "Reduced to two exercises for your energy today." : "Choose comfortable loads; no automatic weight increases.")"
-        if names.isEmpty { explanation += " All matching exercises were trained recently. Consider a rest day or change equipment." }
+        let options = ExerciseCatalog.choices(profile).filter { !trained.contains($0.name) }
+        let reduced = profile.readiness == "Low energy" || profile.returning == true
+        let target = min(reduced ? 4 : 7, max(1, profile.targetCount ?? (profile.minutes < 35 ? 4 : 6)))
+        for option in options {
+            let exercise = Exercise(name: option.name, sets: Array(repeating: 0, count: reduced || profile.minutes < 35 ? 2 : 3).map { _ in LoggedSet() })
+            if exercises.count < target && Self.estimate(exercises + [exercise], profile: profile) <= profile.minutes {
+                exercises.append(exercise)
+            }
+        }
+        explanation = "\(exercises.count) exercises within your \(profile.minutes)-minute budget. Estimates allow 4 seconds per rep, 90-second rests and transitions; actual time varies. Warmup is \(profile.warmedUp == true ? "already completed" : "5 minutes, counted separately")."
+        if reduced { explanation += " Reduced sets and accessories for today's feedback." }
+        if !trained.isEmpty { explanation += " Recently logged exercises are excluded; related muscles may still overlap." }
+        if exercises.count < target { explanation += " Fewer options fit the equipment, focus, recent log and time budget." }
     }
 }
 public enum ChatImport {
