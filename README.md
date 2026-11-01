@@ -1,37 +1,21 @@
-# Bearforming — first native iPhone code
+# Bearforming — native iPhone fitness app
 
-Native iPhone app targeting iOS 17+. January 2027 is the release target, not a verified launch commitment. Approved app name: Bearforming.
+Open **Bearforming.xcodeproj**, select the **Bearforming** scheme and an iPhone simulator, then Run. Opening Package.swift builds only FitnessCore.
 
-## Status
-Implementation has started. Source has not been compiled or run: the authoring environment has neither Swift nor Xcode. No signed build, simulator validation, TestFlight upload or device verification has occurred. Source is published in Dordisha/Bearforming. Persistence tests are provided but have not been executed. This is not an installable iPhone build.
+## Current upgrade
+- Today: saved time, equipment, goal and readiness check-in. Deterministic starter planner excludes exercises logged in the preceding 48 hours; adjusts exercise count for short sessions or low energy. Goals are captured, but goal-specific progression is not implemented.
+- Workout: editable sets, complete/undo, previous performance, substitutions, absolute rest deadline, synchronous atomic saves. Valid text edits save immediately; invalid input stays visibly unsaved.
+- Journey: lifting summaries and dated free-text weight, cycling, measurement and milestone records; edit/delete and review status.
+- Import: choose conversations.json (up to 50 MB). Fitness-keyword messages become pending review records. Original text, raw timestamp, conversation link, message ID and role are retained. All branches may be extracted; records deduplicate by conversation/message identity. Assistant messages default to advice; user messages default to unclear. Review dates, units and completion manually. Imported free text does not drive load or workout-volume calculations.
+- Coach: offline guided responses for today, logged progress and reviewed completed notes, with sources. Unsupported questions receive an explicit limitation. No connected AI model.
 
-Implemented in source: editable starter workouts, sets/reps/weights in pounds, set completion and undo, previous logged performance, adding exercises/sets, substitution before completed sets, a 90-second rest timer, completed workout summaries, and atomic local saves after mutations. Rest uses an absolute deadline so it can resume after relaunch; it does not send background notifications. App reports save errors and blocks edits after unreadable/unsupported data is encountered. Draft numeric text is committed through SwiftUI numeric fields; verify keyboard/focus behavior during device testing.
+## Validation
+Initial shell passed GitHub macOS CI and the owner reported it running. The first text-entry update had a compile error, corrected in this upgrade. Check Actions for current build/test results. Automated checks do not verify phone lifecycle or keyboard behavior.
 
-Today uses explicitly selected starter templates. No personalized recommendation engine exists. Journey has lifting summaries only. Coach is a clearly labeled placeholder. Chat history, cycling, body weight, measurements, photos, awards, cloud sync, export/deletion controls and HealthKit are not implemented. No personal history is seeded, and there are no API keys, analytics, network calls or copied third-party code. The approved Bearforming mascot is bundled and displayed on Today. Start/Resume opens the Workout tab.
+## Device acceptance
+Start a workout, edit values while the keyboard remains open, terminate, reopen and verify values and completion state. Repeat for undo, rest deadline and finish. Confirm old saved workouts survive upgrading. Import a small export twice, verify duplicates are skipped and records stay pending; approve only reviewed completed records and check Coach. Verify failed saves show an error.
 
-## Open on a Mac
+## Remaining work
+Progress photos, structured measurements/charts, goal-specific progression, open-ended AI coaching, normalized workout extraction with date/unit confidence, full data export/deletion, HealthKit, notifications, backup/cloud sync, signing, TestFlight and App Store preparation remain unfinished. This is a development build, not the January release.
 
-Requires Xcode with iOS 17+ SDK. Open Bearforming.xcodeproj directly. XcodeGen is optional for regeneration; with it installed, run:
-
-```sh
-swift test
-xcodegen generate
-open Bearforming.xcodeproj
-```
-
-Select an iPhone simulator and Run. For a physical iPhone, set your own signing team and a unique bundle identifier in Xcode. Signing credentials are not included. A directly openable Xcode project and shared scheme are included. project.yml can regenerate it with XcodeGen.
-
-## Required first milestone verification
-
-1. Start a workout; enter reps and weight; complete a set. Verify the rest countdown and saved values.
-2. Dismiss the numeric keyboard, terminate the app from the app switcher, relaunch, and verify identical session ID, exercise order, values and completion state.
-3. Repeat while the numeric field is still focused. Verify the final typed value was persisted. Fix field handling if needed before milestone acceptance.
-4. Reopen before and after the rest deadline. Confirm remaining time reflects wall clock time and does not restart at 90 seconds.
-5. Undo a set, relaunch and verify it remains undone. Substitute an unstarted exercise, relaunch and verify its name.
-6. Finish a session, relaunch, confirm it appears exactly once in Journey; start the same exercise and verify previous performance.
-7. Inject unreadable JSON in a simulator container. Confirm the app blocks edits and does not overwrite the file. Restore it and Retry.
-8. Run the XCTest persistence suite; simulate storage-write failure and confirm the UI reports failure without claiming a save.
-
-Only mark the first milestone complete after these pass on an iPhone. Atomic file replacement reduces partial writes; it does not constitute backup, storage-failure recovery, migration support or cross-device sync.
-
-See docs/PROJECT_BRIEF.md and docs/HISTORY_IMPORT.md for scope and the review gate.
+No personal chat or health data is stored in this public repository. App data remains on the device. No analytics, API keys or external AI calls are included.
