@@ -1,5 +1,4 @@
 import SwiftUI
-import FitnessCore
 
 @main struct BearformingApp: App {
     @StateObject private var store = WorkoutStore()

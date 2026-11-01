@@ -1,6 +1,8 @@
 // !$*UTF8*$!
 {
 archiveVersion = 1; classes = {}; objectVersion = 56; objects = {
+000000000000000000000300 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/FitnessCore/Models.swift"; sourceTree = "<group>"; };
+000000000000000000000301 = {isa = PBXBuildFile; fileRef = 000000000000000000000300; };
 000000000000000000000190 = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = App/Resources/Assets.xcassets; sourceTree = "<group>"; };
 000000000000000000000191 = {isa = PBXBuildFile; fileRef = 000000000000000000000190; };
 000000000000000000000064 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "App/BearformingApp.swift"; sourceTree = "<group>"; };
@@ -17,20 +19,17 @@ archiveVersion = 1; classes = {}; objectVersion = 56; objects = {
 0000000000000000000000CD = {isa = PBXBuildFile; fileRef = 000000000000000000000069; };
 00000000000000000000006A = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "App/WorkoutStore.swift"; sourceTree = "<group>"; };
 0000000000000000000000CE = {isa = PBXBuildFile; fileRef = 00000000000000000000006A; };
-000000000000000000000001 = {isa = PBXProject; attributes = {LastUpgradeCheck = 1600; }; buildConfigurationList = 000000000000000000000014; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; knownRegions = (en, Base); mainGroup = 000000000000000000000002; packageReferences = (00000000000000000000001E); productRefGroup = 000000000000000000000003; projectDirPath = ""; projectRoot = ""; targets = (000000000000000000000004); };
-000000000000000000000002 = {isa = PBXGroup; children = (000000000000000000000190,000000000000000000000064,000000000000000000000065,000000000000000000000066,000000000000000000000067,000000000000000000000068,000000000000000000000069,00000000000000000000006A,000000000000000000000003); sourceTree = "<group>"; };
+000000000000000000000001 = {isa = PBXProject; attributes = {LastUpgradeCheck = 1600; }; buildConfigurationList = 000000000000000000000014; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; knownRegions = (en, Base); mainGroup = 000000000000000000000002; packageReferences = (); productRefGroup = 000000000000000000000003; projectDirPath = ""; projectRoot = ""; targets = (000000000000000000000004); };
+000000000000000000000002 = {isa = PBXGroup; children = (000000000000000000000300,000000000000000000000190,000000000000000000000064,000000000000000000000065,000000000000000000000066,000000000000000000000067,000000000000000000000068,000000000000000000000069,00000000000000000000006A,000000000000000000000003); sourceTree = "<group>"; };
 000000000000000000000003 = {isa = PBXGroup; name = Products; children = (000000000000000000000005); sourceTree = "<group>"; };
 000000000000000000000005 = {isa = PBXFileReference; explicitFileType = wrapper.application; path = Bearforming.app; sourceTree = BUILT_PRODUCTS_DIR; };
-000000000000000000000004 = {isa = PBXNativeTarget; buildConfigurationList = 000000000000000000000015; buildPhases = (000000000000000000000006,000000000000000000000007,000000000000000000000008); buildRules = (); dependencies = (); name = Bearforming; packageProductDependencies = (00000000000000000000001F); productName = Bearforming; productReference = 000000000000000000000005; productType = "com.apple.product-type.application"; };
-000000000000000000000006 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (0000000000000000000000C8,0000000000000000000000C9,0000000000000000000000CA,0000000000000000000000CB,0000000000000000000000CC,0000000000000000000000CD,0000000000000000000000CE); runOnlyForDeploymentPostprocessing = 0; };
-000000000000000000000007 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000020); runOnlyForDeploymentPostprocessing = 0; };
+000000000000000000000004 = {isa = PBXNativeTarget; buildConfigurationList = 000000000000000000000015; buildPhases = (000000000000000000000006,000000000000000000000007,000000000000000000000008); buildRules = (); dependencies = (); name = Bearforming; packageProductDependencies = (); productName = Bearforming; productReference = 000000000000000000000005; productType = "com.apple.product-type.application"; };
+000000000000000000000006 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000301,0000000000000000000000C8,0000000000000000000000C9,0000000000000000000000CA,0000000000000000000000CB,0000000000000000000000CC,0000000000000000000000CD,0000000000000000000000CE); runOnlyForDeploymentPostprocessing = 0; };
+000000000000000000000007 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 000000000000000000000008 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000191); runOnlyForDeploymentPostprocessing = 0; };
-00000000000000000000001E = {isa = XCLocalSwiftPackageReference; relativePath = .; };
-00000000000000000000001F = {isa = XCSwiftPackageProductDependency; package = 00000000000000000000001E; productName = FitnessCore; };
-000000000000000000000020 = {isa = PBXBuildFile; productRef = 00000000000000000000001F; };
 000000000000000000000014 = {isa = XCConfigurationList; buildConfigurations = (000000000000000000000016,000000000000000000000017); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 000000000000000000000015 = {isa = XCConfigurationList; buildConfigurations = (000000000000000000000018,000000000000000000000019); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
-000000000000000000000016 = {isa = XCBuildConfiguration; buildSettings = {SDKROOT = iphoneos; IPHONEOS_DEPLOYMENT_TARGET = 17.0; }; name = Debug; };
+000000000000000000000016 = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; SDKROOT = iphoneos; IPHONEOS_DEPLOYMENT_TARGET = 17.0; }; name = Debug; };
 000000000000000000000017 = {isa = XCBuildConfiguration; buildSettings = {SDKROOT = iphoneos; IPHONEOS_DEPLOYMENT_TARGET = 17.0; }; name = Release; };
 000000000000000000000018 = {isa = XCBuildConfiguration; buildSettings = {PRODUCT_NAME = "$(TARGET_NAME)"; PRODUCT_BUNDLE_IDENTIFIER = com.doriandishani.bearforming; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_CFBundleDisplayName = "Bearforming"; INFOPLIST_KEY_UILaunchScreen_Generation = YES; MARKETING_VERSION = 0.1.0; CURRENT_PROJECT_VERSION = 1; SWIFT_VERSION = 5.0; SWIFT_OPTIMIZATION_LEVEL = "-Onone"; TARGETED_DEVICE_FAMILY = 1; CODE_SIGN_STYLE = Automatic; }; name = Debug; };
 000000000000000000000019 = {isa = XCBuildConfiguration; buildSettings = {PRODUCT_NAME = "$(TARGET_NAME)"; PRODUCT_BUNDLE_IDENTIFIER = com.doriandishani.bearforming; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_CFBundleDisplayName = "Bearforming"; INFOPLIST_KEY_UILaunchScreen_Generation = YES; MARKETING_VERSION = 0.1.0; CURRENT_PROJECT_VERSION = 1; SWIFT_VERSION = 5.0; SWIFT_OPTIMIZATION_LEVEL = "-O"; TARGETED_DEVICE_FAMILY = 1; CODE_SIGN_STYLE = Automatic; }; name = Release; };

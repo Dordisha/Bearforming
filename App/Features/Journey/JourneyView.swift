@@ -1,6 +1,5 @@
 import SwiftUI
 import UniformTypeIdentifiers
-import FitnessCore
 
 struct JourneyView: View {
     @EnvironmentObject var store: WorkoutStore

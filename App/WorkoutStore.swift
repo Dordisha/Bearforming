@@ -1,5 +1,4 @@
 import SwiftUI
-import FitnessCore
 
 @MainActor final class WorkoutStore: ObservableObject {
     @Published private(set) var state = FitnessState()

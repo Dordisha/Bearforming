@@ -1,5 +1,4 @@
 import SwiftUI
-import FitnessCore
 
 struct CoachView: View {
     @EnvironmentObject var store: WorkoutStore
