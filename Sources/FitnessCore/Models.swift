@@ -133,9 +133,37 @@ public struct TrainingPlan {
         if profile.readiness == "Pain or unwell" {
             explanation = "Pause planning while you feel pain or unwell. This app cannot assess symptoms."; return
         }
-        let recent = state.history.filter { now.timeIntervalSince($0.startedAt) >= 0 && now.timeIntervalSince($0.startedAt) < 172800 }
-        let trained = Set(recent.flatMap { $0.exercises.filter { $0.sets.contains { $0.completedAt != nil } }.map(\.name) })
-        let options = ExerciseCatalog.choices(profile).filter { !trained.contains($0.name) }
+        // Set completion is the activity evidence; a session may have been opened
+        // days earlier. Include saved active sets, but never planned or future sets.
+        let logged = state.history + (state.active.map { [$0] } ?? [])
+        let completed = logged.flatMap(\.exercises).filter { exercise in
+            exercise.sets.contains { set in set.completedAt.map { $0 <= now } ?? false }
+        }
+        let familiar = Set(completed.map(\.name))
+        let trained = Set(completed.filter { exercise in
+            exercise.sets.contains { set in
+                guard let date = set.completedAt else { return false }
+                let age = now.timeIntervalSince(date)
+                return age >= 0 && age < 172800
+            }
+        }.map(\.name))
+        let eligible = ExerciseCatalog.choices(profile).filter { !trained.contains($0.name) }
+        // Keep the catalog's movement-group sequence; prefer familiar exercises
+        // within each group instead of allowing one group's history to dominate.
+        var pools: [String: [ExerciseOption]] = [:]
+        for group in Set(eligible.map(\.group)) {
+            let items = eligible.filter { $0.group == group }
+            pools[group] = items.filter { familiar.contains($0.name) }
+                + items.filter { !familiar.contains($0.name) }
+        }
+        let options = eligible.map { item -> ExerciseOption in
+            pools[item.group]!.removeFirst()
+        }
+        let recentCycling = (state.entries ?? []).contains { entry in
+            let age = now.timeIntervalSince(entry.date)
+            return entry.category == "Cycling" && entry.approved && entry.status == "completed"
+                && age >= 0 && age < 172800
+        }
         let reduced = profile.readiness == "Low energy" || profile.returning == true
         let target = min(reduced ? 4 : 7, max(1, profile.targetCount ?? (profile.minutes < 35 ? 4 : 6)))
         for option in options {
@@ -146,6 +174,10 @@ public struct TrainingPlan {
         }
         explanation = "\(exercises.count) exercises within your \(profile.minutes)-minute budget. Estimates allow 4 seconds per rep, 90-second rests and transitions; actual time varies. Warmup is \(profile.warmedUp == true ? "already completed" : "5 minutes, counted separately")."
         if reduced { explanation += " Reduced sets and accessories for today's feedback." }
+        if exercises.contains(where: { familiar.contains($0.name) }) {
+            explanation += " Familiar exercises are prioritized within each movement group using completed sets in your log; past weights are not prescribed." }
+        if recentCycling {
+            explanation += " Your reviewed Journey records include completed cycling within 48 hours. Check today's energy and leg fatigue; ride intensity is unknown, so sets and warmup are not automatically changed." }
         if !trained.isEmpty { explanation += " Recently logged exercises are excluded; related muscles may still overlap." }
         if exercises.count < target { explanation += " Fewer options fit the equipment, focus, recent log and time budget." }
     }
