@@ -79,10 +79,7 @@ struct WorkoutView: View {
                 }
             }
             .confirmationDialog("Save this workout to Journey?", isPresented: $finishConfirmation, titleVisibility: .visible) {
-                Button("Finish and save") { store.update { state in
-                    guard var finished = state.active else { return }
-                    finished.finishedAt = Date(); state.history.append(finished); state.active = nil; state.restUntil = nil
-                } }
+                Button("Finish and save") { store.update { $0.finishWorkout() } }
                 Button("Keep training", role: .cancel) {}
             }
         }

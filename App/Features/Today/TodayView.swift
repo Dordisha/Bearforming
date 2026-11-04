@@ -82,7 +82,7 @@ struct TodayView: View {
                     Text(plan.explanation).font(.footnote).foregroundStyle(.secondary)
                     Text("Adjust exercises and sets in Workout. Goal is recorded for context; this starter planner does not yet prescribe goal-specific progression.").font(.caption)
                     Button(store.state.active == nil ? "Start workout" : "Resume workout") {
-                        if store.state.active == nil { store.update { $0.active = Workout(exercises: preview) } }
+                        if store.state.active == nil { store.update { $0.startWorkout(exercises: preview) } }
                         if store.error == nil { selectedTab = 1 }
                     }.disabled(store.state.active == nil && (preview.isEmpty || profile.readiness == "Pain or unwell"))
                 }

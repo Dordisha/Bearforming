@@ -31,6 +31,26 @@ public struct FitnessState: Codable, Equatable {
     public var history: [Workout] = []
     public var restUntil: Date?
     public init() {}
+    /// The preview is a one-session draft. Consume it in the same saved state
+    /// as the new workout so a later session gets a fresh recovery-aware plan.
+    public mutating func startWorkout(exercises: [Exercise], now: Date = Date()) {
+        guard active == nil, !exercises.isEmpty,
+              profile?.readiness != "Pain or unwell" else { return }
+        var workout = Workout(exercises: exercises)
+        workout.startedAt = now
+        active = workout
+        plannedExercises = nil
+        restUntil = nil
+    }
+    public mutating func finishWorkout(now: Date = Date()) {
+        guard var workout = active else { return }
+        workout.finishedAt = now
+        history.append(workout)
+        active = nil
+        // Also retire previews left by versions predating startWorkout.
+        plannedExercises = nil
+        restUntil = nil
+    }
     public func previousPerformance(for name: String) -> Exercise? {
         history.sorted { $0.startedAt > $1.startedAt }
             .lazy.flatMap(\.exercises).first { $0.name == name && $0.sets.contains { $0.completedAt != nil } }
