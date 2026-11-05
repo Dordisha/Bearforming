@@ -51,9 +51,23 @@ public struct FitnessState: Codable, Equatable {
         plannedExercises = nil
         restUntil = nil
     }
-    public func previousPerformance(for name: String) -> Exercise? {
-        history.sorted { $0.startedAt > $1.startedAt }
-            .lazy.flatMap(\.exercises).first { $0.name == name && $0.sets.contains { $0.completedAt != nil } }
+    public func previousPerformance(for name: String, now: Date = Date()) -> Exercise? {
+        var latest: Exercise?
+        var latestCompletion: Date?
+        for exercise in history.flatMap(\.exercises) where exercise.name == name {
+            let completed = exercise.sets.filter { set in
+                guard let date = set.completedAt else { return false }
+                return date <= now
+            }
+            guard let date = completed.compactMap(\.completedAt).max() else { continue }
+            if latestCompletion == nil || date > latestCompletion! {
+                var evidence = exercise
+                evidence.sets = completed
+                latest = evidence
+                latestCompletion = date
+            }
+        }
+        return latest
     }
 }
 
