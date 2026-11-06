@@ -4,7 +4,7 @@ struct TodayView: View {
     @EnvironmentObject var store: WorkoutStore
     @Binding var selectedTab: Int
     private var profile: TrainingProfile { store.state.profile ?? TrainingProfile() }
-    private var preview: [Exercise] { store.state.plannedExercises ?? plan.exercises }
+    private var preview: [Exercise] { store.state.plannedExercises ?? [] }
     private func editPreview(_ change: (inout [Exercise]) -> Void) {
         var items = preview
         change(&items)
@@ -16,14 +16,14 @@ struct TodayView: View {
                 var updated = state.profile ?? TrainingProfile()
                 updated[keyPath: key] = value
                 state.profile = updated
-                state.plannedExercises = nil
+                state.refreshPreview()
             }
         })
     }
     private var plan: TrainingPlan { TrainingPlan(state: store.state) }
     private func setting<T>(_ key: WritableKeyPath<TrainingProfile, T>, fallback: T) -> Binding<T> {
         Binding(get: { (store.state.profile ?? TrainingProfile())[keyPath: key] }, set: { value in
-            store.update { state in var profile = state.profile ?? TrainingProfile(); profile[keyPath: key] = value; state.profile = profile; state.plannedExercises = nil }
+            store.update { state in var profile = state.profile ?? TrainingProfile(); profile[keyPath: key] = value; state.profile = profile; state.refreshPreview() }
         })
     }
     var body: some View {
@@ -78,7 +78,7 @@ struct TodayView: View {
                     if TrainingPlan.estimate(preview, profile: profile) > profile.minutes {
                         Text("Your edits exceed the available time. Remove exercises or increase your time budget.").foregroundStyle(.orange)
                     }
-                    Button("Reset suggestion") { store.update { $0.plannedExercises = nil } }
+                    Button("Reset suggestion") { store.update { $0.refreshPreview() } }
                     Text(plan.explanation).font(.footnote).foregroundStyle(.secondary)
                     Text("Adjust exercises and sets in Workout. Goal is recorded for context; this starter planner does not yet prescribe goal-specific progression.").font(.caption)
                     Button(store.state.active == nil ? "Start workout" : "Resume workout") {
@@ -87,6 +87,11 @@ struct TodayView: View {
                     }.disabled(store.state.active == nil && (preview.isEmpty || profile.readiness == "Pain or unwell"))
                 }
             }.navigationTitle("Today").toolbar { EditButton() }
+            .onAppear {
+                if store.state.plannedExercises == nil {
+                    store.update { $0.preparePreviewIfNeeded() }
+                }
+            }
         }
     }
 }

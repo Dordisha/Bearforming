@@ -31,6 +31,15 @@ public struct FitnessState: Codable, Equatable {
     public var history: [Workout] = []
     public var restUntil: Date?
     public init() {}
+    /// Persist one draft so UI actions address the same exercise IDs that
+    /// were displayed. Never replace an edited draft merely by reopening Today.
+    public mutating func preparePreviewIfNeeded(now: Date = Date()) {
+        guard plannedExercises == nil else { return }
+        refreshPreview(now: now)
+    }
+    public mutating func refreshPreview(now: Date = Date()) {
+        plannedExercises = TrainingPlan(state: self, now: now).exercises
+    }
     /// The preview is a one-session draft. Consume it in the same saved state
     /// as the new workout so a later session gets a fresh recovery-aware plan.
     public mutating func startWorkout(exercises: [Exercise], now: Date = Date()) {
