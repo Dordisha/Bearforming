@@ -226,9 +226,20 @@ public struct TrainingPlan {
     }
 }
 public enum ChatImport {
+    private static func normalized(_ text: String) -> String {
+        text.lowercased().split { !$0.isLetter && !$0.isNumber }.joined(separator: " ")
+    }
+    private static func matchesFitnessText(_ text: String) -> Bool {
+        let keywords = ["workout", "gym", "squat", "bench", "cycling", "bike", "weight", "deadlift", "reps", "sets", "leg press", "pulldown"]
+        // Recognition only: these names do not establish completion, dates,
+        // units, or a safe training load. Keep the original message unchanged.
+        let variants = ["incline dumbbell press", "incline db press", "shoulder press", "supine press", "lat pull down"]
+        let candidate = normalized(text)
+        return (keywords + ExerciseCatalog.all.map(\.name) + variants)
+            .contains { candidate.contains(normalized($0)) }
+    }
     public static func extract(_ data: Data) throws -> [JourneyEntry] {
         guard let conversations = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] else { throw CocoaError(.coderReadCorrupt) }
-        let keywords = ["workout", "gym", "squat", "bench", "cycling", "bike", "weight", "deadlift", "reps", "sets", "leg press", "pulldown"]
         var result: [JourneyEntry] = []
         for conversation in conversations {
             let cid = conversation["id"] as? String ?? conversation["conversation_id"] as? String ?? ""
@@ -236,7 +247,7 @@ public enum ChatImport {
             for (nodeID, node) in mapping {
                 guard let message = node["message"] as? [String: Any], let content = message["content"] as? [String: Any], let parts = content["parts"] as? [Any] else { continue }
                 let text = parts.compactMap { $0 as? String }.joined(separator: "\n")
-                guard keywords.contains(where: { text.lowercased().contains($0) }) else { continue }
+                guard matchesFitnessText(text) else { continue }
                 var entry = JourneyEntry()
                 let mid = message["id"] as? String ?? nodeID
                 entry.sourceID = cid + ":" + mid
