@@ -5,7 +5,7 @@ struct JourneyView: View {
     @EnvironmentObject var store: WorkoutStore
     @State private var importer = false
     @State private var draft: JourneyEntry?
-    @State private var importError: String?
+    @State private var importMessage: String?
     var body: some View {
         NavigationStack {
             List {
@@ -42,18 +42,18 @@ struct JourneyView: View {
                     let access = url.startAccessingSecurityScopedResource()
                     defer { if access { url.stopAccessingSecurityScopedResource() } }
                     let data = try Data(contentsOf: url)
-                    guard data.count <= 50_000_000 else { importError = "Use an export under 50 MB for this version."; return }
+                    guard data.count <= 50_000_000 else { importMessage = "Use an export under 50 MB for this version."; return }
                     let incoming = try ChatImport.extract(data)
-                    store.update { state in
-                        var entries = state.entries ?? []
-                        var known = Set(entries.map(\.sourceID))
-                        for entry in incoming where known.insert(entry.sourceID).inserted { entries.append(entry) }
-                        state.entries = entries
+                    var summary = ImportSummary()
+                    store.update { state in summary = state.stageImportedEntries(incoming) }
+                    if store.loaded && store.error == nil {
+                        importMessage = incoming.isEmpty
+                            ? "No matching fitness messages found. Choose conversations.json from your export."
+                            : summary.message
                     }
-                    if incoming.isEmpty { importError = "No matching fitness messages found. Choose conversations.json from your export." }
-                } catch { importError = "Could not read this export. Your existing history was preserved." }
+                } catch { importMessage = "Could not read this export. Your existing history was preserved." }
             }
-            .alert("Import", isPresented: Binding(get: { importError != nil }, set: { if !$0 { importError = nil } })) { Button("OK") { importError = nil } } message: { Text(importError ?? "") }
+            .alert("Import", isPresented: Binding(get: { importMessage != nil }, set: { if !$0 { importMessage = nil } })) { Button("OK") { importMessage = nil } } message: { Text(importMessage ?? "") }
             .sheet(item: $draft) { entry in
                 EntryEditor(entry: entry) { updated in
                     store.update { state in

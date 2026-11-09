@@ -31,6 +31,26 @@ public struct FitnessState: Codable, Equatable {
     public var history: [Workout] = []
     public var restUntil: Date?
     public init() {}
+    /// Merge review candidates without replacing the owner's edits or approval.
+    @discardableResult
+    public mutating func stageImportedEntries(_ incoming: [JourneyEntry]) -> ImportSummary {
+        var saved = entries ?? []
+        var known = Set(saved.map(\.sourceID))
+        var summary = ImportSummary()
+        for var entry in incoming {
+            guard !entry.sourceID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                summary.invalid += 1; continue
+            }
+            guard known.insert(entry.sourceID).inserted else {
+                summary.duplicates += 1; continue
+            }
+            entry.approved = false
+            saved.append(entry)
+            summary.added += 1
+        }
+        if summary.added > 0 { entries = saved }
+        return summary
+    }
     /// Persist one draft so UI actions address the same exercise IDs that
     /// were displayed. Never replace an edited draft merely by reopening Today.
     public mutating func preparePreviewIfNeeded(now: Date = Date()) {
@@ -95,6 +115,16 @@ public struct StateRepository {
         let data = try JSONEncoder().encode(state)
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         try data.write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+    }
+}
+
+public struct ImportSummary: Equatable {
+    public var added = 0
+    public var duplicates = 0
+    public var invalid = 0
+    public init() {}
+    public var message: String {
+        "Added \(added) notes for review. Skipped \(duplicates) duplicates and \(invalid) records without message identity. Existing records were preserved."
     }
 }
 
