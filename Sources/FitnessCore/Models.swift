@@ -295,3 +295,18 @@ public enum ChatImport {
         return result.sorted { $0.date < $1.date }
     }
 }
+
+/// Validate an edit before replacing durable set values. No grouping or exponent notation.
+public enum SetInput {
+    public static func parse(_ text: String, maximum: Double, integerOnly: Bool,
+                             decimalSeparator: String = ".") -> Double? {
+        let normalized = text.replacingOccurrences(of: decimalSeparator, with: ".")
+        guard !normalized.isEmpty,
+              normalized.allSatisfy({ "0123456789.".contains($0) }),
+              normalized.filter({ $0 == "." }).count <= 1,
+              let number = Double(normalized), number.isFinite,
+              number >= 0, number <= maximum,
+              !integerOnly || number.rounded() == number else { return nil }
+        return number
+    }
+}

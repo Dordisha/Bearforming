@@ -103,11 +103,8 @@ private struct LiveSetField: View {
                 .accessibilityLabel(title)
                 .onAppear { draft = display(value) }
                 .onChange(of: draft) { _, text in
-                    let separator = Locale.current.decimalSeparator ?? "."
-                    let normalized = text.replacingOccurrences(of: separator, with: ".")
-                    let parsed = text.isEmpty ? 0 : Double(normalized)
-                    guard let number = parsed, number.isFinite, number >= 0,
-                          number <= maximum, !integerOnly || number.rounded() == number else {
+                    guard let number = SetInput.parse(text, maximum: maximum, integerOnly: integerOnly,
+                                                     decimalSeparator: Locale.current.decimalSeparator ?? ".") else {
                         invalid = true
                         return
                     }
@@ -117,7 +114,7 @@ private struct LiveSetField: View {
                 .onChange(of: value) { _, newValue in
                     // Preserve partial decimal input such as "60." during typing.
                     let normalized = draft.replacingOccurrences(of: Locale.current.decimalSeparator ?? ".", with: ".")
-                    if (draft.isEmpty ? Optional(0.0) : Double(normalized)) != Optional(newValue) {
+                    if Double(normalized) != Optional(newValue) {
                         draft = display(newValue)
                     }
                 }
@@ -129,7 +126,7 @@ private struct LiveSetField: View {
     }
 
     private func display(_ number: Double) -> String {
-        number == 0 ? "" : (number.rounded() == number ? String(Int(number)) : String(number))
+        (number.rounded() == number ? String(Int(number)) : String(number))
             .replacingOccurrences(of: ".", with: Locale.current.decimalSeparator ?? ".")
     }
 }
