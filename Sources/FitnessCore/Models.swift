@@ -255,6 +255,48 @@ public struct TrainingPlan {
         if exercises.count < target { explanation += " Fewer options fit the equipment, focus, recent log and time budget." }
     }
 }
+/// A read-only description of the saved draft, never of a newly generated plan.
+/// Legacy drafts have no generation metadata, so do not infer their focus or rationale.
+public struct SessionPreviewSummary {
+    public let exerciseCount: Int
+    public let setCount: Int
+    public let minutes: Int
+    public let explanation: String
+    public init(state: FitnessState, now: Date = Date()) {
+        let exercises = state.plannedExercises ?? []
+        let profile = state.profile ?? TrainingProfile()
+        exerciseCount = exercises.count
+        setCount = exercises.reduce(0) { $0 + $1.sets.count }
+        minutes = exercises.isEmpty ? 0 : TrainingPlan.estimate(exercises, profile: profile)
+        var text = exercises.isEmpty
+            ? "No exercises in your saved draft. Add an exercise or reset the suggestion."
+            : "This is your saved draft, including any edits. Time is an estimate including warmup; actual time varies. Reset suggestion to rebuild from current preferences and logged activity."
+        if profile.readiness == "Pain or unwell" {
+            text += " Pause planning while you feel pain or unwell. This app cannot assess symptoms."
+        }
+        let names = Set(exercises.map(\.name))
+        let logged = state.history + (state.active.map { [$0] } ?? [])
+        let overlap = logged.flatMap(\.exercises).contains { exercise in
+            names.contains(exercise.name) && exercise.sets.contains { set in
+                guard let date = set.completedAt else { return false }
+                let age = now.timeIntervalSince(date)
+                return age >= 0 && age < 172800
+            }
+        }
+        if overlap {
+            text += " This draft includes exercises with completed sets logged within 48 hours. Review before starting; your draft has not been changed."
+        }
+        if (state.entries ?? []).contains(where: { entry in
+            let age = now.timeIntervalSince(entry.date)
+            return entry.category == "Cycling" && entry.approved && entry.status == "completed"
+                && age >= 0 && age < 172800
+        }) {
+            text += " Your reviewed records include completed cycling within 48 hours. Check your energy and leg fatigue; ride intensity is unknown. Cycling has not automatically changed this draft or marked warmup complete."
+        }
+        explanation = text
+    }
+}
+
 public enum ChatImport {
     private static func normalized(_ text: String) -> String {
         text.lowercased().split { !$0.isLetter && !$0.isNumber }.joined(separator: " ")

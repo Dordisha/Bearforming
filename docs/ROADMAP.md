@@ -20,3 +20,10 @@ Journey metrics/cycling/photos; explainable suggestions; grounded conversational
 Beta fixes, recovery/privacy controls, accessibility and release QA. Confirm personal TestFlight versus public App Store and exact release date.
 
 Source completion is distinct from verified behavior. Local Linux cannot run Xcode. Hosted macOS unit tests and simulator SDK compilation are available; simulator interaction and physical-device acceptance remain unverified.
+
+## November 11 increment and next steps
+- [x] Saved-draft Today summary uses displayed counts/sets/time and verified recent evidence; no inferred generation rationale.
+- [ ] Rolling Upper/Lower plan with explicit completion/partial/override semantics (market direction, November 10).
+- [ ] Today-only choices and proper cardio mode; preserve edited drafts.
+- [ ] Review structured actual history before personalizing beyond verified in-app records.
+- [ ] Approve and execute native scenarios, including saved-summary/relaunch checks in November 11 checkpoint.

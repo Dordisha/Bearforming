@@ -20,7 +20,7 @@ struct TodayView: View {
             }
         })
     }
-    private var plan: TrainingPlan { TrainingPlan(state: store.state) }
+    private var summary: SessionPreviewSummary { SessionPreviewSummary(state: store.state) }
     private func setting<T>(_ key: WritableKeyPath<TrainingProfile, T>, fallback: T) -> Binding<T> {
         Binding(get: { (store.state.profile ?? TrainingProfile())[keyPath: key] }, set: { value in
             store.update { state in var profile = state.profile ?? TrainingProfile(); profile[keyPath: key] = value; state.profile = profile; state.refreshPreview() }
@@ -32,6 +32,19 @@ struct TodayView: View {
                 Section {
                     Image("BearformingLogo").resizable().scaledToFit().frame(height: 180).frame(maxWidth: .infinity)
                     Text("Build your next chapter").font(.title.bold())
+                }
+                Section(store.state.active == nil ? "Your saved workout" : "Workout in progress") {
+                    if store.state.active == nil {
+                        Text("\(summary.exerciseCount) exercises · \(summary.setCount) planned sets · about \(summary.minutes) minutes")
+                            .font(.headline)
+                        Text(summary.explanation).font(.footnote).foregroundStyle(.secondary)
+                    } else {
+                        Text("Resume your active workout to continue logging.")
+                    }
+                    Button(store.state.active == nil ? "Start workout" : "Resume workout") {
+                        if store.state.active == nil { store.update { $0.startWorkout(exercises: preview) } }
+                        if store.error == nil { selectedTab = 1 }
+                    }.disabled(store.state.active == nil && (preview.isEmpty || profile.readiness == "Pain or unwell"))
                 }
                 Section("Today's check-in") {
                     Picker("Goal", selection: setting(\.goal, fallback: "Build consistency")) { ForEach(["Build consistency", "Build strength", "Maintain muscle"], id: \.self) { Text($0) } }
@@ -45,7 +58,7 @@ struct TodayView: View {
                     }
                     Stepper("Target: \(profile.targetCount ?? (profile.minutes < 35 ? 4 : 6)) exercises",
                             value: optionalSetting(\.targetCount, fallback: profile.minutes < 35 ? 4 : 6), in: 3...7)
-                    Toggle("Warmup / cycling already done", isOn: optionalSetting(\.warmedUp, fallback: false))
+                    Toggle("Strength warmup already done", isOn: optionalSetting(\.warmedUp, fallback: false))
                     Toggle("Returning after a break", isOn: optionalSetting(\.returning, fallback: false))
                 }
                 Section("Session preview") {
@@ -79,12 +92,8 @@ struct TodayView: View {
                         Text("Your edits exceed the available time. Remove exercises or increase your time budget.").foregroundStyle(.orange)
                     }
                     Button("Reset suggestion") { store.update { $0.refreshPreview() } }
-                    Text(plan.explanation).font(.footnote).foregroundStyle(.secondary)
                     Text("Adjust exercises and sets in Workout. Goal is recorded for context; this starter planner does not yet prescribe goal-specific progression.").font(.caption)
-                    Button(store.state.active == nil ? "Start workout" : "Resume workout") {
-                        if store.state.active == nil { store.update { $0.startWorkout(exercises: preview) } }
-                        if store.error == nil { selectedTab = 1 }
-                    }.disabled(store.state.active == nil && (preview.isEmpty || profile.readiness == "Pain or unwell"))
+
                 }
             }.navigationTitle("Today").toolbar { EditButton() }
             .onAppear {
