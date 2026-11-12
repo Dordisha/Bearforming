@@ -27,3 +27,8 @@ Source completion is distinct from verified behavior. Local Linux cannot run Xco
 - [ ] Today-only choices and proper cardio mode; preserve edited drafts.
 - [ ] Review structured actual history before personalizing beyond verified in-app records.
 - [ ] Approve and execute native scenarios, including saved-summary/relaunch checks in November 11 checkpoint.
+
+## November 12 increment
+- [x] Separate evidence-based next-focus advisory for recent finished upper/lower work; preserves saved draft and six-exercise defaults.
+- [ ] Automatic rolling sequence and today-only overrides remain unimplemented; advisory does not advance a program.
+- [ ] Native next-focus/relaunch scenarios in November 12 checkpoint await approval; no native acceptance run.

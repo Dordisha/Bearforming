@@ -46,6 +46,17 @@ struct TodayView: View {
                         if store.error == nil { selectedTab = 1 }
                     }.disabled(store.state.active == nil && (preview.isEmpty || profile.readiness == "Pain or unwell"))
                 }
+                if store.state.active == nil {
+                    Section("Next focus suggestion") {
+                        let suggestion = NextFocusSuggestion(state: store.state)
+                        if let focus = suggestion.focus {
+                            Text("Consider \(focus.lowercased()) body").font(.headline)
+                        }
+                        Text(suggestion.explanation).font(.footnote).foregroundStyle(.secondary)
+                        Text("To use a different focus, choose it in Session preferences below. Changing that preference replaces the saved preview.")
+                            .font(.caption)
+                    }
+                }
                 Section("Today's check-in") {
                     Picker("Goal", selection: setting(\.goal, fallback: "Build consistency")) { ForEach(["Build consistency", "Build strength", "Maintain muscle"], id: \.self) { Text($0) } }
                     Stepper("Time: \(store.state.profile?.minutes ?? 40) minutes", value: setting(\.minutes, fallback: 40), in: 15...90, step: 5)

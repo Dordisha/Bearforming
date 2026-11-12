@@ -189,6 +189,51 @@ public enum ExerciseCatalog {
         }
     }
 }
+/// Advisory only: does not advance a program or rewrite a saved draft.
+/// Classify actual sets from the most recently finished session, not its title.
+public struct NextFocusSuggestion {
+    public let focus: String?
+    public let explanation: String
+    public init(state: FitnessState, now: Date = Date()) {
+        focus = Self.suggestedFocus(state: state, now: now)
+        if state.active != nil {
+            explanation = "Finish or resume your active workout before choosing the next focus."
+        } else if state.profile?.readiness == "Pain or unwell" {
+            explanation = "Pause planning while you feel pain or unwell."
+        } else if let focus = focus {
+            let previous = focus == "Lower" ? "upper-body" : "lower-body"
+            explanation = "Your most recently finished session includes logged \(previous) work within 48 hours. Consider \(focus.lowercased()) body next if you feel ready. This is a focus suggestion, not a recovery measurement; your saved workout has not changed."
+        } else {
+            explanation = "No clear recent upper/lower pattern in your finished workout log. Choose a focus based on how you feel; your saved workout has not changed."
+        }
+    }
+    private static func suggestedFocus(state: FitnessState, now: Date) -> String? {
+        guard state.active == nil, state.profile?.readiness != "Pain or unwell" else { return nil }
+        let finished = state.history.filter {
+            guard let end = $0.finishedAt else { return false }
+            return end <= now && end >= $0.startedAt
+        }.max { $0.finishedAt! < $1.finishedAt! }
+        guard let workout = finished, let end = workout.finishedAt else { return nil }
+        var groups = Set<String>()
+        for exercise in workout.exercises {
+            let logged = exercise.sets.contains { set in
+                guard let date = set.completedAt else { return false }
+                return date >= workout.startedAt && date <= end
+                    && now.timeIntervalSince(date) >= 0 && now.timeIntervalSince(date) < 172800
+            }
+            guard logged else { continue }
+            // Unknown completed movements prevent a confident classification.
+            guard let option = ExerciseCatalog.all.first(where: { $0.name == exercise.name }) else { return nil }
+            if option.group == "Lower" { groups.insert("Lower") }
+            else if ["Push", "Pull"].contains(option.group) { groups.insert("Upper") }
+            // Core is neutral and never establishes an upper/lower pattern alone.
+        }
+        if groups == ["Upper"] { return "Lower" }
+        if groups == ["Lower"] { return "Upper" }
+        return nil
+    }
+}
+
 public struct TrainingPlan {
     public var exercises: [Exercise]
     public var names: [String] { exercises.map(\.name) }
