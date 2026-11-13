@@ -32,3 +32,8 @@ Source completion is distinct from verified behavior. Local Linux cannot run Xco
 - [x] Separate evidence-based next-focus advisory for recent finished upper/lower work; preserves saved draft and six-exercise defaults.
 - [ ] Automatic rolling sequence and today-only overrides remain unimplemented; advisory does not advance a program.
 - [ ] Native next-focus/relaunch scenarios in November 12 checkpoint await approval; no native acceptance run.
+
+## November 13 increment
+- [x] Next-workout strength focus override with preview replacement confirmation, persistence and consumption at start; usual focus preserved.
+- [ ] Rolling sequence and cardio mode remain outstanding. Earlier November 12 today-only gap is now addressed as a next-workout override, not a calendar-day expiry.
+- [ ] Approve/run override, cancellation, relaunch and upgrade scenarios in November 13 checkpoint.

@@ -24,6 +24,21 @@ public struct Workout: Codable, Identifiable, Equatable {
 }
 public struct FitnessState: Codable, Equatable {
     public var plannedExercises: [Exercise]?
+    /// Applies to the next draft only; nil preserves the usual profile focus.
+    public var sessionFocus: String?
+    public var planningProfile: TrainingProfile {
+        var value = profile ?? TrainingProfile()
+        if let focus = sessionFocus, TrainingProfile.strengthFocuses.contains(focus) {
+            value.focus = focus
+        }
+        return value
+    }
+    /// Explicit replacement operation. UI confirms before invoking this on an edited draft.
+    public mutating func changeSessionFocus(_ focus: String?, now: Date = Date()) {
+        guard active == nil, focus == nil || TrainingProfile.strengthFocuses.contains(focus!) else { return }
+        sessionFocus = focus
+        refreshPreview(now: now)
+    }
     public var entries: [JourneyEntry]?
     public var profile: TrainingProfile?
     public var schemaVersion = 1
@@ -69,6 +84,7 @@ public struct FitnessState: Codable, Equatable {
         workout.startedAt = now
         active = workout
         plannedExercises = nil
+        sessionFocus = nil
         restUntil = nil
     }
     public mutating func finishWorkout(now: Date = Date()) {
@@ -78,6 +94,7 @@ public struct FitnessState: Codable, Equatable {
         active = nil
         // Also retire previews left by versions predating startWorkout.
         plannedExercises = nil
+        sessionFocus = nil
         restUntil = nil
     }
     public func previousPerformance(for name: String, now: Date = Date()) -> Exercise? {
@@ -142,6 +159,7 @@ public struct JourneyEntry: Codable, Identifiable, Equatable {
     public init() {}
 }
 public struct TrainingProfile: Codable, Equatable {
+    public static let strengthFocuses = ["Full body", "Upper", "Lower", "Push", "Pull"]
     public var focus: String?
     public var targetCount: Int?
     public var warmedUp: Bool?
@@ -246,7 +264,7 @@ public struct TrainingPlan {
         return Int(ceil(seconds / 60)) + (profile.warmedUp == true ? 0 : 5)
     }
     public init(state: FitnessState, now: Date = Date()) {
-        let profile = state.profile ?? TrainingProfile()
+        let profile = state.planningProfile
         exercises = []
         if profile.readiness == "Pain or unwell" {
             explanation = "Pause planning while you feel pain or unwell. This app cannot assess symptoms."; return
@@ -309,7 +327,7 @@ public struct SessionPreviewSummary {
     public let explanation: String
     public init(state: FitnessState, now: Date = Date()) {
         let exercises = state.plannedExercises ?? []
-        let profile = state.profile ?? TrainingProfile()
+        let profile = state.planningProfile
         exerciseCount = exercises.count
         setCount = exercises.reduce(0) { $0 + $1.sets.count }
         minutes = exercises.isEmpty ? 0 : TrainingPlan.estimate(exercises, profile: profile)

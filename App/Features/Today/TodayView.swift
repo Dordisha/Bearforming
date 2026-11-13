@@ -3,7 +3,13 @@ import SwiftUI
 struct TodayView: View {
     @EnvironmentObject var store: WorkoutStore
     @Binding var selectedTab: Int
-    private var profile: TrainingProfile { store.state.profile ?? TrainingProfile() }
+    @State private var pendingFocus = "Full body"
+    @State private var confirmFocus = false
+    private var profile: TrainingProfile { store.state.planningProfile }
+    private func requestFocus(_ focus: String) {
+        pendingFocus = focus
+        confirmFocus = true
+    }
     private var preview: [Exercise] { store.state.plannedExercises ?? [] }
     private func editPreview(_ change: (inout [Exercise]) -> Void) {
         var items = preview
@@ -53,7 +59,10 @@ struct TodayView: View {
                             Text("Consider \(focus.lowercased()) body").font(.headline)
                         }
                         Text(suggestion.explanation).font(.footnote).foregroundStyle(.secondary)
-                        Text("To use a different focus, choose it in Session preferences below. Changing that preference replaces the saved preview.")
+                        if let focus = suggestion.focus {
+                            Button("Use \(focus.lowercased()) for this workout") { requestFocus(focus) }
+                        }
+                        Text("Choose a focus for this workout below. Your usual focus stays unchanged.")
                             .font(.caption)
                     }
                 }
@@ -63,8 +72,25 @@ struct TodayView: View {
                     Picker("Equipment", selection: setting(\.equipment, fallback: "Gym")) { ForEach(["Gym", "Dumbbells", "Bodyweight"], id: \.self) { Text($0) } }
                     Picker("Feeling", selection: setting(\.readiness, fallback: "Ready")) { ForEach(["Ready", "Low energy", "Pain or unwell"], id: \.self) { Text($0) } }
                 }
+                if store.state.active == nil {
+                    Section("Focus for this workout") {
+                        Text("Planning focus: \(profile.focus ?? "Full body")")
+                        Menu("Change this workout") {
+                            ForEach(TrainingProfile.strengthFocuses, id: \.self) { focus in
+                                Button(focus) { requestFocus(focus) }
+                            }
+                            Button("Use usual focus") { requestFocus("Use usual focus") }
+                        }
+                        Text("Applies to the next workout, including after reopening the app. Starting it clears the override. Replacing the preview requires confirmation.").font(.caption)
+                    }
+                }
                 Section("Session preferences") {
-                    Picker("Focus", selection: optionalSetting(\.focus, fallback: "Full body")) {
+                    Picker("Usual focus", selection: Binding(get: { store.state.profile?.focus ?? "Full body" }, set: { focus in
+                        store.update { state in
+                            var saved = state.profile ?? TrainingProfile(); saved.focus = focus; state.profile = saved
+                            state.refreshPreview()
+                        }
+                    })) {
                         ForEach(["Full body", "Upper", "Lower", "Push", "Pull"], id: \.self) { Text($0) }
                     }
                     Stepper("Target: \(profile.targetCount ?? (profile.minutes < 35 ? 4 : 6)) exercises",
@@ -107,6 +133,14 @@ struct TodayView: View {
 
                 }
             }.navigationTitle("Today").toolbar { EditButton() }
+            .confirmationDialog("Replace saved workout preview?", isPresented: $confirmFocus, titleVisibility: .visible) {
+                Button("Replace preview") {
+                    store.update { $0.changeSessionFocus(pendingFocus == "Use usual focus" ? nil : pendingFocus) }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This replaces your preview edits using \(pendingFocus == "Use usual focus" ? (store.state.profile?.focus ?? "Full body") : pendingFocus). Your usual focus and logged workouts stay unchanged.")
+            }
             .onAppear {
                 if store.state.plannedExercises == nil {
                     store.update { $0.preparePreviewIfNeeded() }
