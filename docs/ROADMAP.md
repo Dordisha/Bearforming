@@ -37,3 +37,9 @@ Source completion is distinct from verified behavior. Local Linux cannot run Xco
 - [x] Next-workout strength focus override with preview replacement confirmation, persistence and consumption at start; usual focus preserved.
 - [ ] Rolling sequence and cardio mode remain outstanding. Earlier November 12 today-only gap is now addressed as a next-workout override, not a calendar-day expiry.
 - [ ] Approve/run override, cancellation, relaunch and upgrade scenarios in November 13 checkpoint.
+
+## November 14 increment
+- [x] Optional rolling Upper/Lower with persisted next slot and explicit fully-logged/matching completion rule; missed days, partial sessions and other-focus overrides do not advance.
+- [x] Confirmation protects draft replacement when configuring sequence; legacy and active-state handling covered by core regressions.
+- [ ] Cardio mode remains outstanding; no recovery score or inferred ride effort.
+- [ ] Approve/run native sequence, partial/override, persistence and failure scenarios in November 14 checkpoint before release.

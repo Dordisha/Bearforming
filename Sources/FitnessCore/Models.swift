@@ -19,6 +19,7 @@ public struct Workout: Codable, Identifiable, Equatable {
     public var id = UUID()
     public var startedAt = Date()
     public var finishedAt: Date?
+    public var splitSlot: String?
     public var exercises: [Exercise]
     public init(exercises: [Exercise]) { self.exercises = exercises }
 }
@@ -26,8 +27,17 @@ public struct FitnessState: Codable, Equatable {
     public var plannedExercises: [Exercise]?
     /// Applies to the next draft only; nil preserves the usual profile focus.
     public var sessionFocus: String?
+    /// nil disables the opt-in rolling sequence. Time passing never advances it.
+    public var nextSplitFocus: String?
+    public mutating func configureSplit(startingWith focus: String?, now: Date = Date()) {
+        guard active == nil, focus == nil || ["Upper", "Lower"].contains(focus!) else { return }
+        nextSplitFocus = focus
+        sessionFocus = nil
+        refreshPreview(now: now)
+    }
     public var planningProfile: TrainingProfile {
         var value = profile ?? TrainingProfile()
+        if let next = nextSplitFocus, ["Upper", "Lower"].contains(next) { value.focus = next }
         if let focus = sessionFocus, TrainingProfile.strengthFocuses.contains(focus) {
             value.focus = focus
         }
@@ -82,6 +92,9 @@ public struct FitnessState: Codable, Equatable {
               profile?.readiness != "Pain or unwell" else { return }
         var workout = Workout(exercises: exercises)
         workout.startedAt = now
+        if let next = nextSplitFocus, ["Upper", "Lower"].contains(next), planningProfile.focus == next {
+            workout.splitSlot = next
+        }
         active = workout
         plannedExercises = nil
         sessionFocus = nil
@@ -90,12 +103,35 @@ public struct FitnessState: Codable, Equatable {
     public mutating func finishWorkout(now: Date = Date()) {
         guard var workout = active else { return }
         workout.finishedAt = now
+        if let slot = workout.splitSlot, nextSplitFocus == slot,
+           Self.completesSplit(workout, slot: slot, now: now) {
+            nextSplitFocus = slot == "Upper" ? "Lower" : "Upper"
+        }
         history.append(workout)
         active = nil
         // Also retire previews left by versions predating startWorkout.
         plannedExercises = nil
         sessionFocus = nil
         restUntil = nil
+    }
+    /// Only fully logged, matching strength work advances the sequence.
+    /// Unknown/opposite movements, empty sets and invalid dates do not qualify.
+    private static func completesSplit(_ workout: Workout, slot: String, now: Date) -> Bool {
+        guard ["Upper", "Lower"].contains(slot), !workout.exercises.isEmpty else { return false }
+        var hasPrimary = false
+        for exercise in workout.exercises {
+            guard let option = ExerciseCatalog.all.first(where: { $0.name == exercise.name }),
+                  !exercise.sets.isEmpty,
+                  exercise.sets.allSatisfy({ set in
+                      guard let date = set.completedAt else { return false }
+                      return date >= workout.startedAt && date <= now
+                  }) else { return false }
+            if option.group == "Core" { continue }
+            let group = option.group == "Lower" ? "Lower" : "Upper"
+            guard group == slot else { return false }
+            hasPrimary = true
+        }
+        return hasPrimary
     }
     public func previousPerformance(for name: String, now: Date = Date()) -> Exercise? {
         var latest: Exercise?

@@ -5,6 +5,8 @@ struct TodayView: View {
     @Binding var selectedTab: Int
     @State private var pendingFocus = "Full body"
     @State private var confirmFocus = false
+    @State private var pendingSplit: String?
+    @State private var confirmSplit = false
     private var profile: TrainingProfile { store.state.planningProfile }
     private func requestFocus(_ focus: String) {
         pendingFocus = focus
@@ -52,7 +54,7 @@ struct TodayView: View {
                         if store.error == nil { selectedTab = 1 }
                     }.disabled(store.state.active == nil && (preview.isEmpty || profile.readiness == "Pain or unwell"))
                 }
-                if store.state.active == nil {
+                if store.state.active == nil && store.state.nextSplitFocus == nil {
                     Section("Next focus suggestion") {
                         let suggestion = NextFocusSuggestion(state: store.state)
                         if let focus = suggestion.focus {
@@ -79,9 +81,21 @@ struct TodayView: View {
                             ForEach(TrainingProfile.strengthFocuses, id: \.self) { focus in
                                 Button(focus) { requestFocus(focus) }
                             }
-                            Button("Use usual focus") { requestFocus("Use usual focus") }
+                            Button("Use sequence or usual focus") { requestFocus("Use usual focus") }
                         }
                         Text("Applies to the next workout, including after reopening the app. Starting it clears the override. Replacing the preview requires confirmation.").font(.caption)
+                    }
+                }
+                if store.state.active == nil {
+                    Section("Rolling Upper / Lower") {
+                        Text(store.state.nextSplitFocus.map { "Next in sequence: \($0)" } ?? "Sequence off")
+                        Menu("Set sequence") {
+                            ForEach(["Upper", "Lower"], id: \.self) { focus in
+                                Button("Start with \(focus)") { pendingSplit = focus; confirmSplit = true }
+                            }
+                            Button("Turn off sequence") { pendingSplit = nil; confirmSplit = true }
+                        }
+                        Text("Alternates after you finish a matching workout with every remaining set logged. Partial sessions, a different focus and missed days keep the same next slot. This is a schedule, not a recovery assessment.").font(.caption)
                     }
                 }
                 Section("Session preferences") {
@@ -133,13 +147,19 @@ struct TodayView: View {
 
                 }
             }.navigationTitle("Today").toolbar { EditButton() }
+            .confirmationDialog("Replace preview and update sequence?", isPresented: $confirmSplit, titleVisibility: .visible) {
+                Button("Update sequence") { store.update { $0.configureSplit(startingWith: pendingSplit) } }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This replaces preview edits and clears the next-workout override. Your usual focus and logged workouts stay unchanged.")
+            }
             .confirmationDialog("Replace saved workout preview?", isPresented: $confirmFocus, titleVisibility: .visible) {
                 Button("Replace preview") {
                     store.update { $0.changeSessionFocus(pendingFocus == "Use usual focus" ? nil : pendingFocus) }
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("This replaces your preview edits using \(pendingFocus == "Use usual focus" ? (store.state.profile?.focus ?? "Full body") : pendingFocus). Your usual focus and logged workouts stay unchanged.")
+                Text("This replaces your preview edits using \(pendingFocus == "Use usual focus" ? (store.state.nextSplitFocus ?? store.state.profile?.focus ?? "Full body") : pendingFocus). Your usual focus and logged workouts stay unchanged.")
             }
             .onAppear {
                 if store.state.plannedExercises == nil {
