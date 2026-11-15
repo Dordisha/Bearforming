@@ -10,7 +10,7 @@ struct JourneyView: View {
         NavigationStack {
             List {
                 Section("Your timeline") {
-                    Button("Add weight, ride, measurement or milestone") { draft = JourneyEntry() }
+                    Button("Add weight, cardio, ride or milestone") { draft = JourneyEntry() }
                     Button("Import ChatGPT conversations.json") { importer = true }
                     Text("Imports stay pending until you review dates, units and whether activity was completed. Original message text is retained. Nothing is uploaded.").font(.caption)
                     ForEach((store.state.entries ?? []).sorted { $0.date > $1.date }) { entry in
@@ -19,6 +19,9 @@ struct JourneyView: View {
                                 Text(entry.category).font(.headline)
                                 Text(entry.date, style: .date)
                                 Text(entry.text).lineLimit(3)
+                                if entry.isCardio {
+                                    Text("Duration: \(entry.durationMinutes.map { "\($0) min" } ?? "unknown") · Effort: \(entry.cardioEffort ?? "unknown")").font(.caption)
+                                }
                                 Text(entry.approved ? "Reviewed • \(entry.status)" : "Needs review • \(entry.status)").font(.caption)
                             }
                         }.foregroundStyle(.primary)
@@ -73,14 +76,39 @@ struct JourneyView: View {
 
 private struct EntryEditor: View {
     @State var entry: JourneyEntry
+    @State private var durationText: String
+    @State private var effort: String
+    init(entry: JourneyEntry, save: @escaping (JourneyEntry) -> Void, remove: @escaping () -> Void) {
+        _entry = State(initialValue: entry)
+        _durationText = State(initialValue: entry.durationMinutes.map(String.init) ?? "")
+        _effort = State(initialValue: entry.cardioEffort ?? "Unknown")
+        self.save = save
+        self.remove = remove
+    }
+    private var validatedEntry: JourneyEntry? {
+        var copy = entry
+        return copy.setCardioDetails(duration: durationText, effort: effort) ? copy : nil
+    }
     let save: (JourneyEntry) -> Void
     let remove: () -> Void
     @Environment(\.dismiss) private var dismiss
     var body: some View {
         NavigationStack {
             Form {
-                Picker("Type", selection: $entry.category) { ForEach(["Milestone", "Body weight", "Cycling", "Measurement", "Lifting", "Imported conversation"], id: \.self) { Text($0) } }
+                Picker("Type", selection: $entry.category) { ForEach(["Milestone", "Body weight", "Cycling", "Cardio", "Measurement", "Lifting", "Imported conversation"], id: \.self) { Text($0) } }
                 DatePicker("Date", selection: $entry.date, displayedComponents: [.date, .hourAndMinute])
+                if entry.isCardio {
+                    Section("Cardio details • optional") {
+                        TextField("Duration in minutes", text: $durationText).keyboardType(.numberPad)
+                        Picker("Your effort", selection: $effort) {
+                            ForEach(JourneyEntry.cardioEfforts, id: \.self) { Text($0) }
+                        }
+                        Text("Leave duration blank or effort Unknown if you do not know. These fields describe your record; they do not mark it completed or reviewed.").font(.caption)
+                        if validatedEntry == nil {
+                            Text("Enter whole minutes from 1 to 1440, or leave blank.").foregroundStyle(.orange)
+                        }
+                    }
+                }
                 Section("Record • include original units") { TextEditor(text: $entry.text).frame(minHeight: 140) }
                 Section("Source") {
                     if let original = entry.originalText { DisclosureGroup("Original message") { Text(original).textSelection(.enabled) } }
@@ -94,7 +122,7 @@ private struct EntryEditor: View {
             }.navigationTitle("Review record")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) { Button("Save") { save(entry) }.disabled(entry.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) }
+                ToolbarItem(placement: .confirmationAction) { Button("Save") { if let updated = validatedEntry { save(updated) } }.disabled(validatedEntry == nil || entry.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) }
             }
         }
     }

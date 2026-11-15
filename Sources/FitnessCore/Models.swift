@@ -182,6 +182,27 @@ public struct ImportSummary: Equatable {
 }
 
 public struct JourneyEntry: Codable, Identifiable, Equatable {
+    public var durationMinutes: Int?
+    public var cardioEffort: String?
+    public static let cardioEfforts = ["Unknown", "Easy", "Moderate", "Hard"]
+    public var isCardio: Bool { category == "Cycling" || category == "Cardio" }
+    /// Explicit user input only. Empty duration and unknown effort stay unknown.
+    /// Never infer completion, review, duration or effort from free text.
+    public mutating func setCardioDetails(duration: String, effort: String) -> Bool {
+        guard isCardio else { durationMinutes = nil; cardioEffort = nil; return true }
+        let trimmed = duration.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard Self.cardioEfforts.contains(effort) else { return false }
+        var minutes: Int?
+        if !trimmed.isEmpty {
+            guard trimmed.allSatisfy({ $0.isASCII && $0.isNumber }),
+                  let parsed = Int(trimmed), (1...1440).contains(parsed) else { return false }
+            minutes = parsed
+        }
+        durationMinutes = minutes
+        cardioEffort = effort == "Unknown" ? nil : effort
+        return true
+    }
+
     public var id = UUID()
     public var date = Date()
     public var category = "Milestone"
@@ -349,7 +370,7 @@ public struct TrainingPlan {
         if exercises.contains(where: { familiar.contains($0.name) }) {
             explanation += " Familiar exercises are prioritized within each movement group using completed sets in your log; past weights are not prescribed." }
         if recentCycling {
-            explanation += " Your reviewed Journey records include completed cycling within 48 hours. Check today's energy and leg fatigue; ride intensity is unknown, so sets and warmup are not automatically changed." }
+            explanation += " Your reviewed Journey records include completed cycling within 48 hours. Check today's energy and leg fatigue; ride intensity is not used to automatically change sets or warmup." }
         if !trained.isEmpty { explanation += " Recently logged exercises are excluded; related muscles may still overlap." }
         if exercises.count < target { explanation += " Fewer options fit the equipment, focus, recent log and time budget." }
     }
@@ -390,7 +411,7 @@ public struct SessionPreviewSummary {
             return entry.category == "Cycling" && entry.approved && entry.status == "completed"
                 && age >= 0 && age < 172800
         }) {
-            text += " Your reviewed records include completed cycling within 48 hours. Check your energy and leg fatigue; ride intensity is unknown. Cycling has not automatically changed this draft or marked warmup complete."
+            text += " Your reviewed records include completed cycling within 48 hours. Check your energy and leg fatigue; ride intensity is not used to automatically change this draft or mark warmup complete."
         }
         explanation = text
     }

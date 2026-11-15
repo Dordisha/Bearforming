@@ -44,7 +44,7 @@ final class PreviewSummaryTests: XCTestCase {
         var state = FitnessState(); state.entries = [entry]
         state.preparePreviewIfNeeded(now: now)
         let original = state
-        XCTAssertTrue(SessionPreviewSummary(state: state, now: now).explanation.contains("ride intensity is unknown"))
+        XCTAssertTrue(SessionPreviewSummary(state: state, now: now).explanation.contains("ride intensity is not used"))
         XCTAssertEqual(state, original)
         for kind in 0..<5 {
             var invalid = entry

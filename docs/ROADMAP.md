@@ -43,3 +43,8 @@ Source completion is distinct from verified behavior. Local Linux cannot run Xco
 - [x] Confirmation protects draft replacement when configuring sequence; legacy and active-state handling covered by core regressions.
 - [ ] Cardio mode remains outstanding; no recovery score or inferred ride effort.
 - [ ] Approve/run native sequence, partial/override, persistence and failure scenarios in November 14 checkpoint before release.
+
+## November 15 increment
+- [x] Structured Journey cardio/cycling duration and self-reported effort with unknown defaults, validation and legacy-compatible persistence.
+- [ ] Today cardio-mode integration/timed session remains outstanding; structured notes do not consume strength slots or infer fatigue.
+- [ ] Review/run native cardio editing, invalid-input, legacy and strength-isolation scenarios in November 15 checkpoint.
