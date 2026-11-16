@@ -48,3 +48,8 @@ Source completion is distinct from verified behavior. Local Linux cannot run Xco
 - [x] Structured Journey cardio/cycling duration and self-reported effort with unknown defaults, validation and legacy-compatible persistence.
 - [ ] Today cardio-mode integration/timed session remains outstanding; structured notes do not consume strength slots or infer fatigue.
 - [ ] Review/run native cardio editing, invalid-input, legacy and strength-isolation scenarios in November 15 checkpoint.
+
+## November 16 increment
+- [x] Today opens shared validated cardio/cycling editor, saves to Journey and preserves all strength/sequence state.
+- [ ] Durable start/stop cardio session lifecycle remains outstanding; current entry point logs manual records.
+- [ ] Approve/run Today cardio cancel/save/failure/relaunch/strength-isolation scenarios in November 16 checkpoint.

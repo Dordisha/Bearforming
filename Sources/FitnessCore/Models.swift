@@ -24,6 +24,16 @@ public struct Workout: Codable, Identifiable, Equatable {
     public init(exercises: [Exercise]) { self.exercises = exercises }
 }
 public struct FitnessState: Codable, Equatable {
+    /// Upsert one explicit record without touching strength/session state.
+    public mutating func saveJourneyEntry(_ entry: JourneyEntry) {
+        var saved = entries ?? []
+        if let index = saved.firstIndex(where: { $0.id == entry.id }) {
+            saved[index] = entry
+        } else {
+            saved.append(entry)
+        }
+        entries = saved
+    }
     public var plannedExercises: [Exercise]?
     /// Applies to the next draft only; nil preserves the usual profile focus.
     public var sessionFocus: String?

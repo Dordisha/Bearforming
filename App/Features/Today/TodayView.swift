@@ -3,6 +3,8 @@ import SwiftUI
 struct TodayView: View {
     @EnvironmentObject var store: WorkoutStore
     @Binding var selectedTab: Int
+    @State private var cardioDraft: JourneyEntry?
+    @State private var cardioSaved = false
     @State private var pendingFocus = "Full body"
     @State private var confirmFocus = false
     @State private var pendingSplit: String?
@@ -66,6 +68,19 @@ struct TodayView: View {
                         }
                         Text("Choose a focus for this workout below. Your usual focus stays unchanged.")
                             .font(.caption)
+                    }
+                }
+                Section("Cardio or cycling") {
+                    Button("Log cardio or cycling") {
+                        var entry = JourneyEntry()
+                        entry.category = "Cardio"
+                        cardioDraft = entry
+                        cardioSaved = false
+                    }.disabled(!store.loaded)
+                    Text("Record an activity and its duration or effort. Choose whether it was completed and reviewed. Your strength draft and next Upper/Lower slot stay unchanged.").font(.caption)
+                    if cardioSaved {
+                        Text("Record saved in Journey.").font(.caption)
+                        Button("View Journey") { selectedTab = 2 }
                     }
                 }
                 Section("Today's check-in") {
@@ -160,6 +175,18 @@ struct TodayView: View {
                 Button("Cancel", role: .cancel) {}
             } message: {
                 Text("This replaces your preview edits using \(pendingFocus == "Use usual focus" ? (store.state.nextSplitFocus ?? store.state.profile?.focus ?? "Full body") : pendingFocus). Your usual focus and logged workouts stay unchanged.")
+            }
+            .sheet(item: $cardioDraft) { entry in
+                EntryEditor(entry: entry) { updated in
+                    store.update { $0.saveJourneyEntry(updated) }
+                    if store.loaded && store.error == nil {
+                        cardioDraft = nil
+                        cardioSaved = true
+                    }
+                } remove: {
+                    // This sheet creates a new record; discarding it changes no saved data.
+                    cardioDraft = nil
+                }
             }
             .onAppear {
                 if store.state.plannedExercises == nil {

@@ -59,11 +59,7 @@ struct JourneyView: View {
             .alert("Import", isPresented: Binding(get: { importMessage != nil }, set: { if !$0 { importMessage = nil } })) { Button("OK") { importMessage = nil } } message: { Text(importMessage ?? "") }
             .sheet(item: $draft) { entry in
                 EntryEditor(entry: entry) { updated in
-                    store.update { state in
-                        var entries = state.entries ?? []
-                        if let i = entries.firstIndex(where: { $0.id == updated.id }) { entries[i] = updated } else { entries.append(updated) }
-                        state.entries = entries
-                    }
+                    store.update { $0.saveJourneyEntry(updated) }
                     if store.error == nil { draft = nil }
                 } remove: {
                     store.update { $0.entries?.removeAll { $0.id == entry.id } }
@@ -74,7 +70,8 @@ struct JourneyView: View {
     }
 }
 
-private struct EntryEditor: View {
+struct EntryEditor: View {
+    @EnvironmentObject var store: WorkoutStore
     @State var entry: JourneyEntry
     @State private var durationText: String
     @State private var effort: String
@@ -95,6 +92,7 @@ private struct EntryEditor: View {
     var body: some View {
         NavigationStack {
             Form {
+                if let error = store.error { Text(error).foregroundStyle(.red) }
                 Picker("Type", selection: $entry.category) { ForEach(["Milestone", "Body weight", "Cycling", "Cardio", "Measurement", "Lifting", "Imported conversation"], id: \.self) { Text($0) } }
                 DatePicker("Date", selection: $entry.date, displayedComponents: [.date, .hourAndMinute])
                 if entry.isCardio {
