@@ -54,7 +54,7 @@ struct TodayView: View {
                     Button(store.state.active == nil ? "Start workout" : "Resume workout") {
                         if store.state.active == nil { store.update { $0.startWorkout(exercises: preview) } }
                         if store.error == nil { selectedTab = 1 }
-                    }.disabled(store.state.active == nil && (preview.isEmpty || profile.readiness == "Pain or unwell"))
+                    }.disabled(store.state.active == nil && (preview.isEmpty || profile.readiness == "Pain or unwell" || store.state.activeCardio != nil))
                 }
                 if store.state.active == nil && store.state.nextSplitFocus == nil {
                     Section("Next focus suggestion") {
@@ -69,6 +69,10 @@ struct TodayView: View {
                         Text("Choose a focus for this workout below. Your usual focus stays unchanged.")
                             .font(.caption)
                     }
+                }
+                CardioTimerSection { entry in
+                    cardioDraft = entry
+                    cardioSaved = false
                 }
                 Section("Cardio or cycling") {
                     Button("Log cardio or cycling") {
@@ -184,8 +188,8 @@ struct TodayView: View {
                         cardioSaved = true
                     }
                 } remove: {
-                    // This sheet creates a new record; discarding it changes no saved data.
-                    cardioDraft = nil
+                    store.update { $0.entries?.removeAll { $0.id == entry.id } }
+                    if store.error == nil { cardioDraft = nil }
                 }
             }
             .onAppear {
@@ -193,6 +197,41 @@ struct TodayView: View {
                     store.update { $0.preparePreviewIfNeeded() }
                 }
             }
+        }
+    }
+}
+
+private struct CardioTimerSection: View {
+    @EnvironmentObject var store: WorkoutStore
+    @State private var category = "Cardio"
+    @State private var confirmDiscard = false
+    let review: (JourneyEntry) -> Void
+    var body: some View {
+        Section("Cardio timer") {
+            if let timer = store.state.activeCardio {
+                Text("\(timer.category) timer running").font(.headline)
+                Text("Started \(timer.startedAt.formatted())")
+                Text(timer.startedAt, style: .timer).monospacedDigit()
+                Text("Elapsed clock time includes time away from the app. Stopping saves an unreviewed Journey record, even if you close the review.").font(.caption)
+                Button("Stop and review") {
+                    var entry: JourneyEntry?
+                    store.update { entry = $0.stopCardio() }
+                    if store.loaded && store.error == nil, let entry = entry { review(entry) }
+                }
+                Button("Discard timer", role: .destructive) { confirmDiscard = true }
+            } else {
+                Picker("Activity", selection: $category) {
+                    Text("Cardio").tag("Cardio")
+                    Text("Cycling").tag("Cycling")
+                }
+                Button("Start cardio timer") { store.update { $0.startCardio(category: category) } }
+                    .disabled(!store.loaded || store.state.active != nil || store.state.profile?.readiness == "Pain or unwell")
+                Text("One workout at a time. Your strength draft and next slot are preserved. No effort or completion is assumed.").font(.caption)
+            }
+        }
+        .confirmationDialog("Discard this timer without a record?", isPresented: $confirmDiscard, titleVisibility: .visible) {
+            Button("Discard timer", role: .destructive) { store.update { $0.discardCardio() } }
+            Button("Keep timer", role: .cancel) {}
         }
     }
 }

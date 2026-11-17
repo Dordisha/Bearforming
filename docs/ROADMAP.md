@@ -53,3 +53,8 @@ Source completion is distinct from verified behavior. Local Linux cannot run Xco
 - [x] Today opens shared validated cardio/cycling editor, saves to Journey and preserves all strength/sequence state.
 - [ ] Durable start/stop cardio session lifecycle remains outstanding; current entry point logs manual records.
 - [ ] Approve/run Today cardio cancel/save/failure/relaunch/strength-isolation scenarios in November 16 checkpoint.
+
+## November 17 increment
+- [x] Persistent Today Cardio/Cycling timer with start/stop/review, confirmed discard, duplicate guards and strength-state preservation.
+- [ ] Pause/active-time tracking remains outstanding; current timer measures wall-clock time requiring review.
+- [ ] Approve/run native timer/relaunch/failure/concurrent-start scenarios in November 17 checkpoint.

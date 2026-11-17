@@ -23,7 +23,43 @@ public struct Workout: Codable, Identifiable, Equatable {
     public var exercises: [Exercise]
     public init(exercises: [Exercise]) { self.exercises = exercises }
 }
+public struct CardioTimer: Codable, Equatable, Identifiable {
+    public var id = UUID()
+    public var startedAt: Date
+    public var category: String
+    public init(startedAt: Date, category: String) {
+        self.startedAt = startedAt; self.category = category
+    }
+}
 public struct FitnessState: Codable, Equatable {
+    public var activeCardio: CardioTimer?
+    public mutating func startCardio(category: String, now: Date = Date()) {
+        guard activeCardio == nil, active == nil, profile?.readiness != "Pain or unwell",
+              ["Cardio", "Cycling"].contains(category) else { return }
+        activeCardio = CardioTimer(startedAt: now, category: category)
+    }
+    /// Wall-clock time is not verified exercise time. Persist for explicit review.
+    @discardableResult
+    public mutating func stopCardio(now: Date = Date()) -> JourneyEntry? {
+        guard let timer = activeCardio else { return nil }
+        let elapsed = now.timeIntervalSince(timer.startedAt)
+        guard elapsed.isFinite, elapsed >= 0 else { return nil }
+        var entry = JourneyEntry()
+        entry.id = timer.id
+        entry.sourceID = "cardio-timer:" + timer.id.uuidString
+        entry.source = "App cardio timer • elapsed clock time, not verified active time"
+        entry.category = timer.category
+        entry.date = timer.startedAt
+        entry.text = "Cardio timer stopped. Review the elapsed duration, actual activity and completion status."
+        // Whole elapsed minutes, never round a sub-minute timer up to activity.
+        if elapsed >= 60 && elapsed <= 86400 { entry.durationMinutes = Int(elapsed / 60) }
+        entry.originalText = "Timer started: \(timer.startedAt.timeIntervalSince1970); stopped: \(now.timeIntervalSince1970); elapsed seconds: \(elapsed)."
+        saveJourneyEntry(entry)
+        activeCardio = nil
+        return entry
+    }
+    public mutating func discardCardio() { activeCardio = nil }
+
     /// Upsert one explicit record without touching strength/session state.
     public mutating func saveJourneyEntry(_ entry: JourneyEntry) {
         var saved = entries ?? []
@@ -98,7 +134,7 @@ public struct FitnessState: Codable, Equatable {
     /// The preview is a one-session draft. Consume it in the same saved state
     /// as the new workout so a later session gets a fresh recovery-aware plan.
     public mutating func startWorkout(exercises: [Exercise], now: Date = Date()) {
-        guard active == nil, !exercises.isEmpty,
+        guard active == nil, activeCardio == nil, !exercises.isEmpty,
               profile?.readiness != "Pain or unwell" else { return }
         var workout = Workout(exercises: exercises)
         workout.startedAt = now
