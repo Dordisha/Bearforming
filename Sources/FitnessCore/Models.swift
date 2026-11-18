@@ -27,33 +27,64 @@ public struct CardioTimer: Codable, Equatable, Identifiable {
     public var id = UUID()
     public var startedAt: Date
     public var category: String
+    // Optional fields keep timers saved before pause support readable.
+    public private(set) var pausedAt: Date?
+    public private(set) var pausedSeconds: TimeInterval?
+    public private(set) var resumedAt: Date?
     public init(startedAt: Date, category: String) {
         self.startedAt = startedAt; self.category = category
+    }
+    /// Unpaused clock time, not evidence of moving time or completed exercise.
+    public func unpausedSeconds(now: Date) -> TimeInterval? {
+        let wall = now.timeIntervalSince(startedAt)
+        let excluded = pausedSeconds ?? 0
+        let lastResume = resumedAt ?? startedAt
+        guard wall.isFinite, wall >= 0, excluded.isFinite, excluded >= 0,
+              lastResume >= startedAt, now >= lastResume else { return nil }
+        let end = pausedAt ?? now
+        guard end >= lastResume, now >= end else { return nil }
+        let elapsed = end.timeIntervalSince(startedAt) - excluded
+        guard elapsed.isFinite, elapsed >= 0 else { return nil }
+        return elapsed
+    }
+    public mutating func pause(now: Date) {
+        guard pausedAt == nil, unpausedSeconds(now: now) != nil else { return }
+        pausedAt = now
+    }
+    public mutating func resume(now: Date) {
+        guard let pause = pausedAt, unpausedSeconds(now: now) != nil else { return }
+        let excluded = (pausedSeconds ?? 0) + now.timeIntervalSince(pause)
+        guard excluded.isFinite else { return }
+        pausedSeconds = excluded
+        resumedAt = now
+        pausedAt = nil
     }
 }
 public struct FitnessState: Codable, Equatable {
     public var activeCardio: CardioTimer?
     public mutating func startCardio(category: String, now: Date = Date()) {
         guard activeCardio == nil, active == nil, profile?.readiness != "Pain or unwell",
+              now.timeIntervalSince1970.isFinite,
               ["Cardio", "Cycling"].contains(category) else { return }
         activeCardio = CardioTimer(startedAt: now, category: category)
     }
-    /// Wall-clock time is not verified exercise time. Persist for explicit review.
+    public mutating func pauseCardio(now: Date = Date()) { activeCardio?.pause(now: now) }
+    public mutating func resumeCardio(now: Date = Date()) { activeCardio?.resume(now: now) }
+    /// Exclude explicit pauses, but still require review of actual exercise time.
     @discardableResult
     public mutating func stopCardio(now: Date = Date()) -> JourneyEntry? {
-        guard let timer = activeCardio else { return nil }
+        guard let timer = activeCardio, let duration = timer.unpausedSeconds(now: now) else { return nil }
         let elapsed = now.timeIntervalSince(timer.startedAt)
-        guard elapsed.isFinite, elapsed >= 0 else { return nil }
         var entry = JourneyEntry()
         entry.id = timer.id
         entry.sourceID = "cardio-timer:" + timer.id.uuidString
-        entry.source = "App cardio timer • elapsed clock time, not verified active time"
+        entry.source = "App cardio timer • unpaused clock time, not verified exercise time"
         entry.category = timer.category
         entry.date = timer.startedAt
-        entry.text = "Cardio timer stopped. Review the elapsed duration, actual activity and completion status."
-        // Whole elapsed minutes, never round a sub-minute timer up to activity.
-        if elapsed >= 60 && elapsed <= 86400 { entry.durationMinutes = Int(elapsed / 60) }
-        entry.originalText = "Timer started: \(timer.startedAt.timeIntervalSince1970); stopped: \(now.timeIntervalSince1970); elapsed seconds: \(elapsed)."
+        entry.text = "Cardio timer stopped. Review the unpaused duration, actual activity and completion status."
+        // Whole unpaused minutes, never round a sub-minute timer up to activity.
+        if duration >= 60 && duration <= 86400 { entry.durationMinutes = Int(duration / 60) }
+        entry.originalText = "Timer started: \(timer.startedAt.timeIntervalSince1970); stopped: \(now.timeIntervalSince1970); elapsed seconds: \(elapsed); paused seconds: \(elapsed - duration); unpaused seconds: \(duration)."
         saveJourneyEntry(entry)
         activeCardio = nil
         return entry

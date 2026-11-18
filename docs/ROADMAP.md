@@ -58,3 +58,9 @@ Source completion is distinct from verified behavior. Local Linux cannot run Xco
 - [x] Persistent Today Cardio/Cycling timer with start/stop/review, confirmed discard, duplicate guards and strength-state preservation.
 - [ ] Pause/active-time tracking remains outstanding; current timer measures wall-clock time requiring review.
 - [ ] Approve/run native timer/relaunch/failure/concurrent-start scenarios in November 17 checkpoint.
+
+## November 18 increment
+- [x] Persisted cardio pause/resume excludes explicit breaks from displayed/proposed duration, including relaunch and stop while paused; no inferred exercise/completion/effort.
+- [x] Legacy timer compatibility, duplicate transition guards and backward-clock protection; earlier pause gap is addressed.
+- [ ] Add explicit Rest/recovery action preserving the strength queue and edited draft.
+- [ ] Approve/run native pause/resume, persistence/failure, upgrade and accessibility scenarios in November 18 checkpoint. Source regressions/SDK build do not constitute native acceptance.

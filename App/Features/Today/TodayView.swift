@@ -209,10 +209,27 @@ private struct CardioTimerSection: View {
     var body: some View {
         Section("Cardio timer") {
             if let timer = store.state.activeCardio {
-                Text("\(timer.category) timer running").font(.headline)
+                Text("\(timer.category) timer \(timer.pausedAt == nil ? "running" : "paused")").font(.headline)
                 Text("Started \(timer.startedAt.formatted())")
-                Text(timer.startedAt, style: .timer).monospacedDigit()
-                Text("Elapsed clock time includes time away from the app. Stopping saves an unreviewed Journey record, even if you close the review.").font(.caption)
+                TimelineView(.periodic(from: .now, by: 1)) { context in
+                    if let seconds = timer.unpausedSeconds(now: context.date) {
+                        let duration = String(format: "%.0f:%02.0f:%02.0f", floor(seconds / 3600),
+                                              floor(seconds / 60).truncatingRemainder(dividingBy: 60),
+                                              floor(seconds).truncatingRemainder(dividingBy: 60))
+                        Text(duration)
+                            .monospacedDigit().accessibilityLabel("Unpaused timer duration")
+                            .accessibilityValue(duration)
+                    } else {
+                        Text("Clock changed. Timing is unavailable until the clock catches up; you can discard this timer and log manually.")
+                            .foregroundStyle(.orange)
+                    }
+                }
+                if timer.pausedAt == nil {
+                    Button("Pause timer") { store.update { $0.pauseCardio() } }
+                } else {
+                    Button("Resume timer") { store.update { $0.resumeCardio() } }
+                }
+                Text("Explicit pauses are excluded. While running, time away from the app still counts. This is not verified exercise time. Stopping saves an unreviewed Journey record, even if you close the review.").font(.caption)
                 Button("Stop and review") {
                     var entry: JourneyEntry?
                     store.update { entry = $0.stopCardio() }
