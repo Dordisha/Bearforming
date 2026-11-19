@@ -61,9 +61,17 @@ public struct CardioTimer: Codable, Equatable, Identifiable {
     }
 }
 public struct FitnessState: Codable, Equatable {
+    /// An explicit preference, not evidence of completed rest or physical recovery.
+    public private(set) var recoverySelectedAt: Date?
+    public mutating func chooseRecovery(now: Date = Date()) {
+        guard active == nil, activeCardio == nil, recoverySelectedAt == nil,
+              now.timeIntervalSince1970.isFinite else { return }
+        recoverySelectedAt = now
+    }
+    public mutating func returnToTraining() { recoverySelectedAt = nil }
     public var activeCardio: CardioTimer?
     public mutating func startCardio(category: String, now: Date = Date()) {
-        guard activeCardio == nil, active == nil, profile?.readiness != "Pain or unwell",
+        guard activeCardio == nil, active == nil, recoverySelectedAt == nil, profile?.readiness != "Pain or unwell",
               now.timeIntervalSince1970.isFinite,
               ["Cardio", "Cycling"].contains(category) else { return }
         activeCardio = CardioTimer(startedAt: now, category: category)
@@ -165,7 +173,7 @@ public struct FitnessState: Codable, Equatable {
     /// The preview is a one-session draft. Consume it in the same saved state
     /// as the new workout so a later session gets a fresh recovery-aware plan.
     public mutating func startWorkout(exercises: [Exercise], now: Date = Date()) {
-        guard active == nil, activeCardio == nil, !exercises.isEmpty,
+        guard active == nil, activeCardio == nil, recoverySelectedAt == nil, !exercises.isEmpty,
               profile?.readiness != "Pain or unwell" else { return }
         var workout = Workout(exercises: exercises)
         workout.startedAt = now

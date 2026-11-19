@@ -43,20 +43,35 @@ struct TodayView: View {
                     Image("BearformingLogo").resizable().scaledToFit().frame(height: 180).frame(maxWidth: .infinity)
                     Text("Build your next chapter").font(.title.bold())
                 }
-                Section(store.state.active == nil ? "Your saved workout" : "Workout in progress") {
-                    if store.state.active == nil {
-                        Text("\(summary.exerciseCount) exercises · \(summary.setCount) planned sets · about \(summary.minutes) minutes")
-                            .font(.headline)
-                        Text(summary.explanation).font(.footnote).foregroundStyle(.secondary)
+                Section("Rest / recovery") {
+                    if let chosen = store.state.recoverySelectedAt {
+                        Text("Rest / recovery selected").font(.headline)
+                        Text("Selected \(chosen.formatted(date: .abbreviated, time: .shortened)). This choice stays selected until you return to training; it does not measure recovery or record completed activity.").font(.caption)
+                        Text("Your saved workout and next strength slot are waiting for you.")
+                        Button("Return to training") { store.update { $0.returnToTraining() } }
+                            .disabled(!store.loaded)
                     } else {
-                        Text("Resume your active workout to continue logging.")
+                        Button("Choose rest / recovery") { store.update { $0.chooseRecovery() } }
+                            .disabled(!store.loaded || store.state.active != nil || store.state.activeCardio != nil)
+                        Text("Keep your saved workout and next strength slot. Finish or discard an active session first. Any actual activity can be logged separately in Journey.").font(.caption)
                     }
-                    Button(store.state.active == nil ? "Start workout" : "Resume workout") {
-                        if store.state.active == nil { store.update { $0.startWorkout(exercises: preview) } }
-                        if store.error == nil { selectedTab = 1 }
-                    }.disabled(store.state.active == nil && (preview.isEmpty || profile.readiness == "Pain or unwell" || store.state.activeCardio != nil))
                 }
-                if store.state.active == nil && store.state.nextSplitFocus == nil {
+                if store.state.recoverySelectedAt == nil {
+                    Section(store.state.active == nil ? "Your saved workout" : "Workout in progress") {
+                        if store.state.active == nil {
+                            Text("\(summary.exerciseCount) exercises · \(summary.setCount) planned sets · about \(summary.minutes) minutes")
+                                .font(.headline)
+                            Text(summary.explanation).font(.footnote).foregroundStyle(.secondary)
+                        } else {
+                            Text("Resume your active workout to continue logging.")
+                        }
+                        Button(store.state.active == nil ? "Start workout" : "Resume workout") {
+                            if store.state.active == nil { store.update { $0.startWorkout(exercises: preview) } }
+                            if store.error == nil { selectedTab = 1 }
+                        }.disabled(store.state.active == nil && (preview.isEmpty || profile.readiness == "Pain or unwell" || store.state.activeCardio != nil))
+                    }
+                }
+                if store.state.recoverySelectedAt == nil && store.state.active == nil && store.state.nextSplitFocus == nil {
                     Section("Next focus suggestion") {
                         let suggestion = NextFocusSuggestion(state: store.state)
                         if let focus = suggestion.focus {
@@ -242,7 +257,10 @@ private struct CardioTimerSection: View {
                     Text("Cycling").tag("Cycling")
                 }
                 Button("Start cardio timer") { store.update { $0.startCardio(category: category) } }
-                    .disabled(!store.loaded || store.state.active != nil || store.state.profile?.readiness == "Pain or unwell")
+                    .disabled(!store.loaded || store.state.active != nil || store.state.recoverySelectedAt != nil || store.state.profile?.readiness == "Pain or unwell")
+                if store.state.recoverySelectedAt != nil {
+                    Text("Return to training above before starting a timer. You can still log actual activity separately.").font(.caption)
+                }
                 Text("One workout at a time. Your strength draft and next slot are preserved. No effort or completion is assumed.").font(.caption)
             }
         }

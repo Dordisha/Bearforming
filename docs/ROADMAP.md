@@ -64,3 +64,9 @@ Source completion is distinct from verified behavior. Local Linux cannot run Xco
 - [x] Legacy timer compatibility, duplicate transition guards and backward-clock protection; earlier pause gap is addressed.
 - [ ] Add explicit Rest/recovery action preserving the strength queue and edited draft.
 - [ ] Approve/run native pause/resume, persistence/failure, upgrade and accessibility scenarios in November 18 checkpoint. Source regressions/SDK build do not constitute native acceptance.
+
+## November 19 increment
+- [x] Explicit persistent Rest/recovery choice and Return to training preserve edited draft, strength queue and evidence; no completed activity or recovery credit inferred.
+- [x] Core/UI start guards and active-session protection; existing pain/unwell remains effective after returning.
+- [ ] Review structured actual history and improve evidence-backed recommendations without seeding private records publicly.
+- [ ] Approve/run native recovery/return/relaunch/failure/upgrade scenarios in November 19 checkpoint alongside existing end-to-end logger scenarios.
