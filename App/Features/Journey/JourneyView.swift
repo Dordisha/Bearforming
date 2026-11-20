@@ -32,8 +32,15 @@ struct JourneyView: View {
                     ForEach(store.state.history.reversed()) { workout in
                         VStack(alignment: .leading) {
                             Text(workout.startedAt, style: .date).font(.headline)
-                            ForEach(workout.exercises) { exercise in
-                                Text("\(exercise.name): \(exercise.sets.filter { $0.completedAt != nil }.count) completed sets")
+                            let completed = workout.completedExercises()
+                            if completed.isEmpty { Text("No completed sets logged.") }
+                            ForEach(completed) { exercise in
+                                Text("\(exercise.name): \(exercise.sets.count) completed sets")
+                            }
+                            DisclosureGroup("Saved plan • \(workout.exercises.count) movements") {
+                                ForEach(workout.exercises) { exercise in
+                                    Text("\(exercise.name): \(exercise.sets.count) planned sets • \(exercise.completedSets().count) completed\(exercise.remainingSetsSkipped == true ? " • remaining sets skipped" : "")")
+                                }
                             }
                         }
                     }

@@ -70,3 +70,9 @@ Source completion is distinct from verified behavior. Local Linux cannot run Xco
 - [x] Core/UI start guards and active-session protection; existing pain/unwell remains effective after returning.
 - [ ] Review structured actual history and improve evidence-backed recommendations without seeding private records publicly.
 - [ ] Approve/run native recovery/return/relaunch/failure/upgrade scenarios in November 19 checkpoint alongside existing end-to-end logger scenarios.
+
+## November 20 increment
+- [x] Explicit remaining-set skip/restore preserves completed sets and the authored plan; Journey separates completed activity from the saved plan.
+- [x] Synthetic partial six-movement history and pending-import regression coverage; no personal data copied into fixtures.
+- [ ] Owner-vet the November 20 native history candidate (refines existing proposed cases); no native execution before approval.
+- [ ] Structured lifting-history review/confirmation remains outstanding; free-text intentions must not become completed sets.

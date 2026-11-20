@@ -11,6 +11,11 @@ public struct Exercise: Codable, Identifiable, Equatable {
     public var id = UUID()
     public var name: String
     public var sets: [LoggedSet]
+    /// Skips only remaining work; completed sets remain activity evidence.
+    public var remainingSetsSkipped: Bool?
+    public func completedSets(now: Date = Date()) -> [LoggedSet] {
+        sets.filter { $0.completedAt.map { $0 <= now } ?? false }
+    }
     public init(name: String, sets: [LoggedSet] = [LoggedSet(), LoggedSet(), LoggedSet()]) {
         self.name = name; self.sets = sets
     }
@@ -22,6 +27,13 @@ public struct Workout: Codable, Identifiable, Equatable {
     public var splitSlot: String?
     public var exercises: [Exercise]
     public init(exercises: [Exercise]) { self.exercises = exercises }
+    public func completedExercises(now: Date = Date()) -> [Exercise] {
+        exercises.compactMap { exercise in
+            var evidence = exercise
+            evidence.sets = exercise.completedSets(now: now)
+            return evidence.sets.isEmpty ? nil : evidence
+        }
+    }
 }
 public struct CardioTimer: Codable, Equatable, Identifiable {
     public var id = UUID()
@@ -61,6 +73,10 @@ public struct CardioTimer: Codable, Equatable, Identifiable {
     }
 }
 public struct FitnessState: Codable, Equatable {
+    public mutating func setRemainingSetsSkipped(exerciseID: UUID, skipped: Bool) {
+        guard let index = active?.exercises.firstIndex(where: { $0.id == exerciseID }) else { return }
+        active?.exercises[index].remainingSetsSkipped = skipped ? true : nil
+    }
     /// An explicit preference, not evidence of completed rest or physical recovery.
     public private(set) var recoverySelectedAt: Date?
     public mutating func chooseRecovery(now: Date = Date()) {
