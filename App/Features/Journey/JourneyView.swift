@@ -5,12 +5,12 @@ struct JourneyView: View {
     @EnvironmentObject var store: WorkoutStore
     @State private var importer = false
     @State private var draft: JourneyEntry?
-    @State private var importError: String?
+    @State private var importMessage: String?
     var body: some View {
         NavigationStack {
             List {
                 Section("Your timeline") {
-                    Button("Add weight, ride, measurement or milestone") { draft = JourneyEntry() }
+                    Button("Add weight, cardio, ride or milestone") { draft = JourneyEntry() }
                     Button("Import ChatGPT conversations.json") { importer = true }
                     Text("Imports stay pending until you review dates, units and whether activity was completed. Original message text is retained. Nothing is uploaded.").font(.caption)
                     ForEach((store.state.entries ?? []).sorted { $0.date > $1.date }) { entry in
@@ -19,6 +19,9 @@ struct JourneyView: View {
                                 Text(entry.category).font(.headline)
                                 Text(entry.date, style: .date)
                                 Text(entry.text).lineLimit(3)
+                                if entry.isCardio {
+                                    Text("Duration: \(entry.durationMinutes.map { "\($0) min" } ?? "unknown") · Effort: \(entry.cardioEffort ?? "unknown")").font(.caption)
+                                }
                                 Text(entry.approved ? "Reviewed • \(entry.status)" : "Needs review • \(entry.status)").font(.caption)
                             }
                         }.foregroundStyle(.primary)
@@ -29,8 +32,15 @@ struct JourneyView: View {
                     ForEach(store.state.history.reversed()) { workout in
                         VStack(alignment: .leading) {
                             Text(workout.startedAt, style: .date).font(.headline)
-                            ForEach(workout.exercises) { exercise in
-                                Text("\(exercise.name): \(exercise.sets.filter { $0.completedAt != nil }.count) completed sets")
+                            let completed = workout.completedExercises()
+                            if completed.isEmpty { Text("No completed sets logged.") }
+                            ForEach(completed) { exercise in
+                                Text("\(exercise.name): \(exercise.sets.count) completed sets")
+                            }
+                            DisclosureGroup("Saved plan • \(workout.exercises.count) movements") {
+                                ForEach(workout.exercises) { exercise in
+                                    Text("\(exercise.name): \(exercise.sets.count) planned sets • \(exercise.completedSets().count) completed\(exercise.remainingSetsSkipped == true ? " • remaining sets skipped" : "")")
+                                }
                             }
                         }
                     }
@@ -42,25 +52,21 @@ struct JourneyView: View {
                     let access = url.startAccessingSecurityScopedResource()
                     defer { if access { url.stopAccessingSecurityScopedResource() } }
                     let data = try Data(contentsOf: url)
-                    guard data.count <= 50_000_000 else { importError = "Use an export under 50 MB for this version."; return }
+                    guard data.count <= 50_000_000 else { importMessage = "Use an export under 50 MB for this version."; return }
                     let incoming = try ChatImport.extract(data)
-                    store.update { state in
-                        var entries = state.entries ?? []
-                        var known = Set(entries.map(\.sourceID))
-                        for entry in incoming where known.insert(entry.sourceID).inserted { entries.append(entry) }
-                        state.entries = entries
+                    var summary = ImportSummary()
+                    store.update { state in summary = state.stageImportedEntries(incoming) }
+                    if store.loaded && store.error == nil {
+                        importMessage = incoming.isEmpty
+                            ? "No matching fitness messages found. Choose conversations.json from your export."
+                            : summary.message
                     }
-                    if incoming.isEmpty { importError = "No matching fitness messages found. Choose conversations.json from your export." }
-                } catch { importError = "Could not read this export. Your existing history was preserved." }
+                } catch { importMessage = "Could not read this export. Your existing history was preserved." }
             }
-            .alert("Import", isPresented: Binding(get: { importError != nil }, set: { if !$0 { importError = nil } })) { Button("OK") { importError = nil } } message: { Text(importError ?? "") }
+            .alert("Import", isPresented: Binding(get: { importMessage != nil }, set: { if !$0 { importMessage = nil } })) { Button("OK") { importMessage = nil } } message: { Text(importMessage ?? "") }
             .sheet(item: $draft) { entry in
                 EntryEditor(entry: entry) { updated in
-                    store.update { state in
-                        var entries = state.entries ?? []
-                        if let i = entries.firstIndex(where: { $0.id == updated.id }) { entries[i] = updated } else { entries.append(updated) }
-                        state.entries = entries
-                    }
+                    store.update { $0.saveJourneyEntry(updated) }
                     if store.error == nil { draft = nil }
                 } remove: {
                     store.update { $0.entries?.removeAll { $0.id == entry.id } }
@@ -71,18 +77,52 @@ struct JourneyView: View {
     }
 }
 
-private struct EntryEditor: View {
+struct EntryEditor: View {
+    @EnvironmentObject var store: WorkoutStore
     @State var entry: JourneyEntry
+    @State private var durationText: String
+    @State private var effort: String
+    init(entry: JourneyEntry, save: @escaping (JourneyEntry) -> Void, remove: @escaping () -> Void) {
+        _entry = State(initialValue: entry)
+        _durationText = State(initialValue: entry.durationMinutes.map(String.init) ?? "")
+        _effort = State(initialValue: entry.cardioEffort ?? "Unknown")
+        self.save = save
+        self.remove = remove
+    }
+    private var validatedEntry: JourneyEntry? {
+        var copy = entry
+        return copy.setCardioDetails(duration: durationText, effort: effort) ? copy : nil
+    }
     let save: (JourneyEntry) -> Void
     let remove: () -> Void
     @Environment(\.dismiss) private var dismiss
     var body: some View {
         NavigationStack {
             Form {
-                Picker("Type", selection: $entry.category) { ForEach(["Milestone", "Body weight", "Cycling", "Measurement", "Lifting", "Imported conversation"], id: \.self) { Text($0) } }
+                if let error = store.error { Text(error).foregroundStyle(.red) }
+                Picker("Type", selection: $entry.category) { ForEach(["Milestone", "Body weight", "Cycling", "Cardio", "Measurement", "Lifting", "Imported conversation"], id: \.self) { Text($0) } }
                 DatePicker("Date", selection: $entry.date, displayedComponents: [.date, .hourAndMinute])
+                if entry.isCardio {
+                    Section("Cardio details • optional") {
+                        TextField("Duration in minutes", text: $durationText).keyboardType(.numberPad)
+                        Picker("Your effort", selection: $effort) {
+                            ForEach(JourneyEntry.cardioEfforts, id: \.self) { Text($0) }
+                        }
+                        Text("Leave duration blank or effort Unknown if you do not know. These fields describe your record; they do not mark it completed or reviewed.").font(.caption)
+                        if validatedEntry == nil {
+                            Text("Enter whole minutes from 1 to 1440, or leave blank.").foregroundStyle(.orange)
+                        }
+                    }
+                }
                 Section("Record • include original units") { TextEditor(text: $entry.text).frame(minHeight: 140) }
                 Section("Source") {
+                    if let role = entry.originalRole {
+                        Text("Original author: \(role)").font(.caption)
+                        Text("The imported date is the message date, not a confirmed workout date. Review each workout day separately; prefer direct owner corrections over assistant recaps. Unknown sets, reps, load and duration remain unresolved; notes do not create completed lifting sets.").font(.caption)
+                    }
+                    if let parent = entry.originalParentSourceID {
+                        Text("Reply to: \(parent)").font(.caption).textSelection(.enabled)
+                    }
                     if let original = entry.originalText { DisclosureGroup("Original message") { Text(original).textSelection(.enabled) } }
                     Text(entry.source).font(.caption).textSelection(.enabled)
                     if entry.source != "Manual entry" && entry.originalTimestamp == nil { Text("Original date missing. Confirm the date before approval.").foregroundStyle(.orange) }
@@ -94,7 +134,7 @@ private struct EntryEditor: View {
             }.navigationTitle("Review record")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) { Button("Save") { save(entry) }.disabled(entry.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) }
+                ToolbarItem(placement: .confirmationAction) { Button("Save") { if let updated = validatedEntry { save(updated) } }.disabled(validatedEntry == nil || entry.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) }
             }
         }
     }

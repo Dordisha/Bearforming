@@ -1,6 +1,6 @@
 # Next update: full-session planning
 
-Status: scoped, not implemented. Owner requests sessions longer than the current three-exercise cap. Personal history evidence stays out of this public repository; imported records still require review before recommendation use.
+Status: fuller time-budgeted sessions and persistent editable preview implemented in 774863d; history-aware refinement prepared November 3, 2026. Native acceptance remains pending. Owner requests sessions longer than the current three-exercise cap. Personal history evidence stays out of this public repository; imported records still require review before recommendation use.
 
 ## Behavior
 - Replace fixed 2/3-exercise cap with editable session size and an estimated time budget. Initial product defaults: short 20–30 minute sessions 3–4 movements; standard 40–60 minute sessions 5–6; extended sessions up to 7 when time and feedback permit. These are configurable product defaults, not personalized medical prescriptions or inferred historical averages.

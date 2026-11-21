@@ -1,6 +1,6 @@
-# History import contract — not yet implemented
+# History import contract — review staging implemented; structured extraction pending
 
-Full chat history has not been imported. A ChatGPT export is needed to begin. Do not infer completed sessions from assistant advice, a suggested routine, gym-machine capability or an undated memory.
+Current importer stages fitness-keyword, catalog-exercise and common naming-variant messages for review; original text, role in source, timestamp and message identity are retained. Reimport deduplication remains in Journey. It does not normalize sets, units or completed activity. Full personal chat history has not been imported. A ChatGPT export is needed to begin. Do not infer completed sessions from assistant advice, a suggested routine, gym-machine capability or an undated memory.
 
 The importer must accept conversations.json locally, retain original message/conversation identifiers and timestamps, and produce editable candidate events. Each event stores:
 
