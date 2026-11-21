@@ -116,6 +116,13 @@ struct EntryEditor: View {
                 }
                 Section("Record • include original units") { TextEditor(text: $entry.text).frame(minHeight: 140) }
                 Section("Source") {
+                    if let role = entry.originalRole {
+                        Text("Original author: \(role)").font(.caption)
+                        Text("The imported date is the message date, not a confirmed workout date. Review each workout day separately; prefer direct owner corrections over assistant recaps. Unknown sets, reps, load and duration remain unresolved; notes do not create completed lifting sets.").font(.caption)
+                    }
+                    if let parent = entry.originalParentSourceID {
+                        Text("Reply to: \(parent)").font(.caption).textSelection(.enabled)
+                    }
                     if let original = entry.originalText { DisclosureGroup("Original message") { Text(original).textSelection(.enabled) } }
                     Text(entry.source).font(.caption).textSelection(.enabled)
                     if entry.source != "Manual entry" && entry.originalTimestamp == nil { Text("Original date missing. Confirm the date before approval.").foregroundStyle(.orange) }

@@ -312,6 +312,8 @@ public struct JourneyEntry: Codable, Identifiable, Equatable {
     public var sourceID = UUID().uuidString
     public var originalText: String?
     public var originalTimestamp: Double?
+    public var originalRole: String?
+    public var originalParentSourceID: String?
     public var status = "unclear"
     public var approved = false
     public init() {}
@@ -519,6 +521,24 @@ public struct SessionPreviewSummary {
 }
 
 public enum ChatImport {
+    /// Keep direct owner corrections even when they omit an exercise keyword.
+    /// Follow only this message's ancestry; unrelated branches are not evidence.
+    private static func isOwnerFollowup(_ text: String) -> Bool {
+        let value = normalized(text)
+        return ["correction", "actually", "i only", "only", "i did", "i completed", "not that", "to clarify"]
+            .contains { value == $0 || value.hasPrefix($0 + " ") }
+    }
+    private static func hasFitnessAncestor(node: [String: Any], mapping: [String: [String: Any]]) -> Bool {
+        var parent = node["parent"] as? String
+        var visited = Set<String>()
+        while let id = parent, visited.insert(id).inserted, let ancestor = mapping[id] {
+            if let message = ancestor["message"] as? [String: Any],
+               let content = message["content"] as? [String: Any], let parts = content["parts"] as? [Any],
+               matchesFitnessText(parts.compactMap { $0 as? String }.joined(separator: "\n")) { return true }
+            parent = ancestor["parent"] as? String
+        }
+        return false
+    }
     private static func normalized(_ text: String) -> String {
         text.lowercased().split { !$0.isLetter && !$0.isNumber }.joined(separator: " ")
     }
@@ -540,7 +560,8 @@ public enum ChatImport {
             for (nodeID, node) in mapping {
                 guard let message = node["message"] as? [String: Any], let content = message["content"] as? [String: Any], let parts = content["parts"] as? [Any] else { continue }
                 let text = parts.compactMap { $0 as? String }.joined(separator: "\n")
-                guard matchesFitnessText(text) else { continue }
+                let role = (message["author"] as? [String: Any])?["role"] as? String ?? "unknown"
+                guard matchesFitnessText(text) || (role == "user" && isOwnerFollowup(text) && hasFitnessAncestor(node: node, mapping: mapping)) else { continue }
                 var entry = JourneyEntry()
                 let mid = message["id"] as? String ?? nodeID
                 entry.sourceID = cid + ":" + mid
@@ -549,7 +570,11 @@ public enum ChatImport {
                 entry.originalText = text
                 entry.originalTimestamp = message["create_time"] as? Double
                 entry.date = Date(timeIntervalSince1970: entry.originalTimestamp ?? 0)
-                let role = (message["author"] as? [String: Any])?["role"] as? String ?? "unknown"
+                entry.originalRole = role
+                if let parent = node["parent"] as? String,
+                   let parentMessage = mapping[parent]?["message"] as? [String: Any] {
+                    entry.originalParentSourceID = cid + ":" + (parentMessage["id"] as? String ?? parent)
+                }
                 entry.status = role == "assistant" ? "advice" : "unclear"
                 entry.source = "https://chatgpt.com/c/" + cid + " • Message " + mid + " • " + role + " • " + (conversation["title"] as? String ?? "Untitled")
                 result.append(entry)

@@ -76,3 +76,9 @@ Source completion is distinct from verified behavior. Local Linux cannot run Xco
 - [x] Synthetic partial six-movement history and pending-import regression coverage; no personal data copied into fixtures.
 - [ ] Owner-vet the November 20 native history candidate (refines existing proposed cases); no native execution before approval.
 - [ ] Structured lifting-history review/confirmation remains outstanding; free-text intentions must not become completed sets.
+
+## November 21 increment
+- [x] Preserve linked owner corrections omitted by keyword-only import, with source author/reply provenance and explicit message-date review guidance.
+- [x] Synthetic adjacent-day/correction/unquantified/implausible-unit regression fixture; no inferred sessions or numeric progression.
+- [ ] Build explicit date-scoped lifting confirmation with unknown quantities preserved; correction capture alone does not implement semantic reconciliation.
+- [ ] Vet existing critical BF-T17 refinement in November 21 checkpoint before native execution. Issue #2 remains the owner; no new native case or issue.
