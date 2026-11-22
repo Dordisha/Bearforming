@@ -82,3 +82,9 @@ Source completion is distinct from verified behavior. Local Linux cannot run Xco
 - [x] Synthetic adjacent-day/correction/unquantified/implausible-unit regression fixture; no inferred sessions or numeric progression.
 - [ ] Build explicit date-scoped lifting confirmation with unknown quantities preserved; correction capture alone does not implement semantic reconciliation.
 - [ ] Vet existing critical BF-T17 refinement in November 21 checkpoint before native execution. Issue #2 remains the owner; no new native case or issue.
+
+## November 22 increment
+- [x] Manual per-day lifting occurrence review with stable rows, explicit status, unresolved dates/amounts and preserved source; no automatic semantic reconciliation.
+- [x] Date validation, adjacent-day correction isolation and persistence/reimport regressions; unquantified notes remain excluded from progression/recommendations.
+- [ ] Explicit quantified-set confirmation and date/unit/unknown-value gates remain outstanding.
+- [ ] Vet existing BF-T17 refinements in November 22 checkpoint before native execution; no native case added.

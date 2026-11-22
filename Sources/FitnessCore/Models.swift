@@ -282,7 +282,38 @@ public struct ImportSummary: Equatable {
     }
 }
 
+/// Reviewed occurrence notes are not quantified sets and never enter progression.
+public struct LiftingOccurrence: Codable, Identifiable, Equatable {
+    public var id = UUID()
+    public var day = "" // Explicit YYYY-MM-DD; blank means unresolved, not message date.
+    public var movement = ""
+    public var status = "unclear"
+    public static let statuses = ["unclear", "planned", "completed", "skipped"]
+    public init() {}
+    public var isValid: Bool {
+        guard !movement.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              Self.statuses.contains(status) else { return false }
+        if day.isEmpty { return true }
+        guard day.count == 10, day.enumerated().allSatisfy({ index, value in
+            [4, 7].contains(index) ? value == "-" : value.isASCII && value.isNumber
+        }) else { return false }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "yyyy-MM-dd"; formatter.isLenient = false
+        guard let date = formatter.date(from: day) else { return false }
+        return formatter.string(from: date) == day
+    }
+}
 public struct JourneyEntry: Codable, Identifiable, Equatable {
+    public var liftingOccurrences: [LiftingOccurrence]?
+    /// All-or-nothing review edit. Source evidence and other records stay intact.
+    public mutating func setLiftingOccurrences(_ values: [LiftingOccurrence]) -> Bool {
+        guard values.allSatisfy(\.isValid), Set(values.map(\.id)).count == values.count else { return false }
+        liftingOccurrences = values.isEmpty ? nil : values
+        return true
+    }
     public var durationMinutes: Int?
     public var cardioEffort: String?
     public static let cardioEfforts = ["Unknown", "Easy", "Moderate", "Hard"]

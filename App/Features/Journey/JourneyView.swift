@@ -82,16 +82,20 @@ struct EntryEditor: View {
     @State var entry: JourneyEntry
     @State private var durationText: String
     @State private var effort: String
+    @State private var liftingOccurrences: [LiftingOccurrence]
     init(entry: JourneyEntry, save: @escaping (JourneyEntry) -> Void, remove: @escaping () -> Void) {
         _entry = State(initialValue: entry)
         _durationText = State(initialValue: entry.durationMinutes.map(String.init) ?? "")
         _effort = State(initialValue: entry.cardioEffort ?? "Unknown")
+        _liftingOccurrences = State(initialValue: entry.liftingOccurrences ?? [])
         self.save = save
         self.remove = remove
     }
     private var validatedEntry: JourneyEntry? {
         var copy = entry
-        return copy.setCardioDetails(duration: durationText, effort: effort) ? copy : nil
+        guard copy.setCardioDetails(duration: durationText, effort: effort),
+              copy.setLiftingOccurrences(liftingOccurrences) else { return nil }
+        return copy
     }
     let save: (JourneyEntry) -> Void
     let remove: () -> Void
@@ -115,6 +119,9 @@ struct EntryEditor: View {
                     }
                 }
                 Section("Record • include original units") { TextEditor(text: $entry.text).frame(minHeight: 140) }
+                if ["Lifting", "Imported conversation"].contains(entry.category) || !liftingOccurrences.isEmpty {
+                    LiftingOccurrenceReview(occurrences: $liftingOccurrences)
+                }
                 Section("Source") {
                     if let role = entry.originalRole {
                         Text("Original author: \(role)").font(.caption)
@@ -136,6 +143,30 @@ struct EntryEditor: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) { Button("Save") { if let updated = validatedEntry { save(updated) } }.disabled(validatedEntry == nil || entry.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) }
             }
+        }
+    }
+}
+
+private struct LiftingOccurrenceReview: View {
+    @Binding var occurrences: [LiftingOccurrence]
+    var body: some View {
+        Section("Lifting occurrences • manual review") {
+            Text("Add only what the source supports, one movement and workout day per row. Use direct owner corrections, not assistant recaps. Leave an unknown day blank; the message date is not substituted.").font(.caption)
+            ForEach($occurrences) { $occurrence in
+                VStack(alignment: .leading) {
+                    TextField("Workout day YYYY-MM-DD (optional)", text: $occurrence.day)
+                        .textInputAutocapitalization(.never).autocorrectionDisabled()
+                    TextField("Movement from source", text: $occurrence.movement)
+                    Picker("Occurrence status", selection: $occurrence.status) {
+                        ForEach(LiftingOccurrence.statuses, id: \.self) { Text($0) }
+                    }
+                    Text("Sets, reps, load and duration: unresolved. Excluded from progression and workout recommendations.").font(.caption)
+                    if !occurrence.isValid { Text("Enter a movement and a valid YYYY-MM-DD date, or leave the date blank.").foregroundStyle(.orange) }
+                    Button("Remove occurrence", role: .destructive) { occurrences.removeAll { $0.id == occurrence.id } }
+                }
+            }
+            Button("Add lifting occurrence") { occurrences.append(LiftingOccurrence()) }
+            Text("Saving records your review notes only. It does not create completed sets or overwrite the original message. Review each day separately before marking the record reviewed.").font(.caption)
         }
     }
 }
