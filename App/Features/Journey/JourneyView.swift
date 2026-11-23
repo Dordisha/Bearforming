@@ -160,13 +160,44 @@ private struct LiftingOccurrenceReview: View {
                     Picker("Occurrence status", selection: $occurrence.status) {
                         ForEach(LiftingOccurrence.statuses, id: \.self) { Text($0) }
                     }
-                    Text("Sets, reps, load and duration: unresolved. Excluded from progression and workout recommendations.").font(.caption)
-                    if !occurrence.isValid { Text("Enter a movement and a valid YYYY-MM-DD date, or leave the date blank.").foregroundStyle(.orange) }
+                    LiftingQuantityReview(occurrence: $occurrence)
+                    if !occurrence.isValid { Text("Check the movement, workout date and set values. Leave unknown values blank.").foregroundStyle(.orange) }
                     Button("Remove occurrence", role: .destructive) { occurrences.removeAll { $0.id == occurrence.id } }
                 }
             }
             Button("Add lifting occurrence") { occurrences.append(LiftingOccurrence()) }
             Text("Saving records your review notes only. It does not create completed sets or overwrite the original message. Review each day separately before marking the record reviewed.").font(.caption)
+        }
+    }
+}
+
+private struct LiftingQuantityReview: View {
+    @Binding var occurrence: LiftingOccurrence
+    private var sets: Binding<[LiftingSetReview]> {
+        Binding(get: { occurrence.reviewedSets ?? [] }, set: { occurrence.reviewedSets = $0.isEmpty ? nil : $0 })
+    }
+    var body: some View {
+        VStack(alignment: .leading) {
+            ForEach(sets) { $set in
+                HStack {
+                    TextField("Reps (unknown if blank)", text: Binding(get: { set.repsText ?? "" }, set: { set.repsText = $0.isEmpty ? nil : $0 }))
+                        .keyboardType(.numberPad)
+                    TextField("Load (unknown if blank)", text: Binding(get: { set.loadText ?? "" }, set: { set.loadText = $0.isEmpty ? nil : $0 }))
+                        .keyboardType(.decimalPad)
+                    Picker("Load unit", selection: Binding(get: { set.unit ?? "Unknown" }, set: { set.unit = $0 == "Unknown" ? nil : $0 })) {
+                        Text("Unknown").tag("Unknown"); Text("lb").tag("lb"); Text("kg").tag("kg")
+                    }
+                    Button("Remove set", role: .destructive) { occurrence.reviewedSets?.removeAll { $0.id == set.id } }
+                }
+            }
+            Button("Add set from source") {
+                var values = occurrence.reviewedSets ?? []; values.append(LiftingSetReview()); occurrence.reviewedSets = values
+            }
+            Toggle("I confirm these completed sets and units", isOn: Binding(
+                get: { occurrence.quantitiesAreConfirmed },
+                set: { value in if value { occurrence.confirmQuantities() } else { occurrence.clearQuantityConfirmation() } }
+            )).disabled(!occurrence.canConfirmQuantities())
+            Text("Use one row per known set. Blank values stay unknown; enter 1–999 reps and 0–9999 load with lb or kg. Confirmation requires a completed occurrence and a known, nonfuture workout day. Changing details invalidates confirmation. Duration remains unresolved. These review notes do not yet update workout history or progression.").font(.caption)
         }
     }
 }

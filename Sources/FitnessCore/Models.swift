@@ -282,17 +282,67 @@ public struct ImportSummary: Equatable {
     }
 }
 
-/// Reviewed occurrence notes are not quantified sets and never enter progression.
+/// Raw review input retains unknown values without default reps or zero load.
+public struct LiftingSetReview: Codable, Identifiable, Equatable {
+    public var id = UUID()
+    public var repsText: String?
+    public var loadText: String?
+    public var unit: String?
+    public init() {}
+    private func present(_ text: String?) -> String? {
+        guard let value = text?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty else { return nil }
+        return value
+    }
+    public var reps: Int? {
+        guard let text = present(repsText), let value = SetInput.parse(text, maximum: 999, integerOnly: true), value >= 1 else { return nil }
+        return Int(value)
+    }
+    public var load: Double? {
+        guard let text = present(loadText) else { return nil }
+        return SetInput.parse(text, maximum: 9999, integerOnly: false, decimalSeparator: ",")
+    }
+    public var isValid: Bool {
+        (present(repsText) == nil || reps != nil) && (present(loadText) == nil || load != nil)
+            && (unit == nil || ["lb", "kg"].contains(unit!))
+    }
+    public var isQuantified: Bool { isValid && reps != nil && load != nil && unit != nil }
+}
+/// Review evidence stays separate from live workout history and progression.
 public struct LiftingOccurrence: Codable, Identifiable, Equatable {
     public var id = UUID()
     public var day = "" // Explicit YYYY-MM-DD; blank means unresolved, not message date.
     public var movement = ""
     public var status = "unclear"
+    public var reviewedSets: [LiftingSetReview]?
+    private var confirmedQuantities: Data?
+    private var quantitySnapshot: Data? {
+        var copy = self; copy.confirmedQuantities = nil
+        let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
+        return try? encoder.encode(copy)
+    }
+    public var quantitiesAreConfirmed: Bool {
+        confirmedQuantities != nil && confirmedQuantities == quantitySnapshot
+    }
+    public func canConfirmQuantities(now: Date = Date()) -> Bool {
+        guard isValid, !day.isEmpty, status == "completed", let sets = reviewedSets,
+              !sets.isEmpty, sets.allSatisfy(\.isQuantified), now.timeIntervalSince1970.isFinite else { return false }
+        let formatter = DateFormatter(); formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian); formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "yyyy-MM-dd"
+        return day <= formatter.string(from: now)
+    }
+    @discardableResult public mutating func confirmQuantities(now: Date = Date()) -> Bool {
+        guard canConfirmQuantities(now: now) else { confirmedQuantities = nil; return false }
+        confirmedQuantities = quantitySnapshot; return quantitiesAreConfirmed
+    }
+    public mutating func clearQuantityConfirmation() { confirmedQuantities = nil }
     public static let statuses = ["unclear", "planned", "completed", "skipped"]
     public init() {}
     public var isValid: Bool {
         guard !movement.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              Self.statuses.contains(status) else { return false }
+              Self.statuses.contains(status),
+              (reviewedSets ?? []).allSatisfy(\.isValid),
+              Set((reviewedSets ?? []).map(\.id)).count == (reviewedSets ?? []).count else { return false }
         if day.isEmpty { return true }
         guard day.count == 10, day.enumerated().allSatisfy({ index, value in
             [4, 7].contains(index) ? value == "-" : value.isASCII && value.isNumber

@@ -88,3 +88,9 @@ Source completion is distinct from verified behavior. Local Linux cannot run Xco
 - [x] Date validation, adjacent-day correction isolation and persistence/reimport regressions; unquantified notes remain excluded from progression/recommendations.
 - [ ] Explicit quantified-set confirmation and date/unit/unknown-value gates remain outstanding.
 - [ ] Vet existing BF-T17 refinements in November 22 checkpoint before native execution; no native case added.
+
+## November 23 increment
+- [x] Per-set optional reps/load/unit review and explicit quantity confirmation; edits invalidate confirmation and unknowns do not become defaults.
+- [x] Date/status/quantity gates, legacy/persistence regressions and planning isolation; original evidence retained.
+- [ ] Apply confirmed review sets to history explicitly with deduplication, units and correction/revocation rules; confirmation alone does not change progression.
+- [ ] Vet existing critical BF-T17 quantity refinements in November 23 checkpoint before native execution.
