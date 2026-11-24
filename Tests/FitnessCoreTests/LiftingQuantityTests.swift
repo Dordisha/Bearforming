@@ -38,6 +38,38 @@ final class LiftingQuantityTests: XCTestCase {
         }
         original.clearQuantityConfirmation(); XCTAssertFalse(original.quantitiesAreConfirmed)
     }
+    func testEditThenRevertRequiresExplicitReconfirmationAfterPersistence() throws {
+        var original = occurrence(); XCTAssertTrue(original.confirmQuantities(now: now))
+        let edits: [(inout LiftingOccurrence) -> Void] = [
+            { $0.id = UUID() }, { $0.day = "2030-04-10" },
+            { $0.movement = "Corrected movement" }, { $0.status = "skipped" },
+            { $0.reviewedSets![0].id = UUID() }, { $0.reviewedSets![0].repsText = "11" },
+            { $0.reviewedSets![0].loadText = "13" }, { $0.reviewedSets![0].unit = "lb" },
+            { $0.reviewedSets?.append(LiftingSetReview()) }, { $0.reviewedSets = nil }
+        ]
+        for edit in edits {
+            var changed = original; edit(&changed)
+            // Persist the edited review before restoring the original field values.
+            changed = try JSONDecoder().decode(LiftingOccurrence.self, from: JSONEncoder().encode(changed))
+            changed.id = original.id; changed.day = original.day; changed.movement = original.movement
+            changed.status = original.status; changed.reviewedSets = original.reviewedSets
+            XCTAssertFalse(changed.quantitiesAreConfirmed)
+            changed = try JSONDecoder().decode(LiftingOccurrence.self, from: JSONEncoder().encode(changed))
+            XCTAssertFalse(changed.quantitiesAreConfirmed)
+            XCTAssertTrue(changed.confirmQuantities(now: now))
+            XCTAssertTrue(original.quantitiesAreConfirmed)
+        }
+    }
+    func testUnchangedBindingWritesPreserveConfirmation() throws {
+        var value = occurrence(); XCTAssertTrue(value.confirmQuantities(now: now))
+        let same = value
+        value.id = same.id; value.day = same.day; value.movement = same.movement
+        value.status = same.status; value.reviewedSets = same.reviewedSets
+        value.reviewedSets![0].repsText = same.reviewedSets![0].repsText
+        XCTAssertTrue(value.quantitiesAreConfirmed)
+        value = try JSONDecoder().decode(LiftingOccurrence.self, from: JSONEncoder().encode(value))
+        XCTAssertTrue(value.quantitiesAreConfirmed)
+    }
     func testUnknownAndInvalidValuesNeverBecomeConfirmedDefaults() {
         var value = occurrence()
         for sets in [nil, [], [LiftingSetReview()]] as [[LiftingSetReview]?] {

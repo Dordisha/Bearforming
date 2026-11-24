@@ -94,3 +94,9 @@ Source completion is distinct from verified behavior. Local Linux cannot run Xco
 - [x] Date/status/quantity gates, legacy/persistence regressions and planning isolation; original evidence retained.
 - [ ] Apply confirmed review sets to history explicitly with deduplication, units and correction/revocation rules; confirmation alone does not change progression.
 - [ ] Vet existing critical BF-T17 quantity refinements in November 23 checkpoint before native execution.
+
+## November 24 increment
+- [x] Material lifting-review edits permanently clear prior quantity confirmation; restoring original field values now requires explicit reconfirmation.
+- [x] Synthetic edit/revert/persistence and unchanged-binding regressions; prior history/import coverage retained.
+- [ ] Apply confirmed sets to history with units, deduplication and correction/revocation safeguards.
+- [ ] Vet existing critical BF-T17 edit/revert refinement in November 24 checkpoint before native execution.

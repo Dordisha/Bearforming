@@ -309,11 +309,14 @@ public struct LiftingSetReview: Codable, Identifiable, Equatable {
 }
 /// Review evidence stays separate from live workout history and progression.
 public struct LiftingOccurrence: Codable, Identifiable, Equatable {
-    public var id = UUID()
-    public var day = "" // Explicit YYYY-MM-DD; blank means unresolved, not message date.
-    public var movement = ""
-    public var status = "unclear"
-    public var reviewedSets: [LiftingSetReview]?
+    // Reverting an edit must not revive an earlier confirmation. Observers also
+    // cover nested set edits made through SwiftUI bindings; decoding preserves
+    // the stored snapshot because property observers do not run during init.
+    public var id = UUID() { didSet { if id != oldValue { clearQuantityConfirmation() } } }
+    public var day = "" { didSet { if day != oldValue { clearQuantityConfirmation() } } } // Explicit YYYY-MM-DD; blank is unresolved.
+    public var movement = "" { didSet { if movement != oldValue { clearQuantityConfirmation() } } }
+    public var status = "unclear" { didSet { if status != oldValue { clearQuantityConfirmation() } } }
+    public var reviewedSets: [LiftingSetReview]? { didSet { if reviewedSets != oldValue { clearQuantityConfirmation() } } }
     private var confirmedQuantities: Data?
     private var quantitySnapshot: Data? {
         var copy = self; copy.confirmedQuantities = nil
