@@ -197,6 +197,11 @@ private struct LiftingQuantityReview: View {
                 get: { occurrence.quantitiesAreConfirmed },
                 set: { value in if value { occurrence.confirmQuantities() } else { occurrence.clearQuantityConfirmation() } }
             )).disabled(!occurrence.canConfirmQuantities())
+            if let blocker = occurrence.quantityConfirmationBlocker() {
+                Text(blocker).font(.caption).accessibilityLabel("Confirmation unavailable. " + blocker)
+            } else if !occurrence.quantitiesAreConfirmed {
+                Text("Details are ready for your review. Confirm only what the source supports.").font(.caption)
+            }
             Text("Use one row per known set. Blank values stay unknown; enter 1–999 reps and 0–9999 load with lb or kg. Confirmation requires a completed occurrence and a known, nonfuture workout day. Changing details invalidates confirmation. Duration remains unresolved. These review notes do not yet update workout history or progression.").font(.caption)
         }
     }

@@ -70,6 +70,37 @@ final class LiftingQuantityTests: XCTestCase {
         value = try JSONDecoder().decode(LiftingOccurrence.self, from: JSONEncoder().encode(value))
         XCTAssertTrue(value.quantitiesAreConfirmed)
     }
+    func testReviewBlockerIdentifiesUnknownSetWithoutChangingEvidence() {
+        var value = occurrence(); var unknown = LiftingSetReview()
+        value.reviewedSets!.append(unknown)
+        let before = value
+        XCTAssertTrue(value.quantityConfirmationBlocker(now: now)!.contains("Set 2: reps"))
+        XCTAssertEqual(value, before)
+        unknown.repsText = "8"; value.reviewedSets![1] = unknown
+        XCTAssertTrue(value.quantityConfirmationBlocker(now: now)!.contains("Set 2: load"))
+        unknown.loadText = "0"; value.reviewedSets![1] = unknown
+        XCTAssertTrue(value.quantityConfirmationBlocker(now: now)!.contains("verified load unit"))
+        unknown.unit = "lb"; value.reviewedSets![1] = unknown
+        XCTAssertNil(value.quantityConfirmationBlocker(now: now))
+        XCTAssertFalse(value.quantitiesAreConfirmed)
+        XCTAssertTrue(value.confirmQuantities(now: now))
+    }
+    func testReviewBlockersAgreeWithConfirmationGates() {
+        let edits: [(inout LiftingOccurrence) -> Void] = [
+            { $0.movement = " " }, { $0.day = "" }, { $0.day = "2030-02-30" },
+            { $0.day = "2099-01-01" }, { $0.status = "planned" }, { $0.status = "skipped" },
+            { $0.reviewedSets = [] }, { $0.reviewedSets![0].repsText = "1.5" },
+            { $0.reviewedSets![0].loadText = "20 fortnights" },
+            { $0.reviewedSets!.append($0.reviewedSets![0]) }
+        ]
+        for edit in edits {
+            var value = occurrence(); edit(&value)
+            XCTAssertNotNil(value.quantityConfirmationBlocker(now: now))
+            XCTAssertFalse(value.canConfirmQuantities(now: now))
+            XCTAssertFalse(value.confirmQuantities(now: now))
+        }
+        XCTAssertNotNil(occurrence().quantityConfirmationBlocker(now: Date(timeIntervalSince1970: .nan)))
+    }
     func testUnknownAndInvalidValuesNeverBecomeConfirmedDefaults() {
         var value = occurrence()
         for sets in [nil, [], [LiftingSetReview()]] as [[LiftingSetReview]?] {

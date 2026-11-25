@@ -326,13 +326,29 @@ public struct LiftingOccurrence: Codable, Identifiable, Equatable {
     public var quantitiesAreConfirmed: Bool {
         confirmedQuantities != nil && confirmedQuantities == quantitySnapshot
     }
-    public func canConfirmQuantities(now: Date = Date()) -> Bool {
-        guard isValid, !day.isEmpty, status == "completed", let sets = reviewedSets,
-              !sets.isEmpty, sets.allSatisfy(\.isQuantified), now.timeIntervalSince1970.isFinite else { return false }
+    /// Explain the first unresolved review gate without filling unknown evidence.
+    public func quantityConfirmationBlocker(now: Date = Date()) -> String? {
+        if movement.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return "Enter the movement from the source." }
+        if day.isEmpty { return "Workout date is unknown. Leave it unresolved unless the source confirms the day." }
+        if status != "completed" { return "Only completed activity can be confirmed. Keep planned, skipped or unclear activity as notes." }
+        guard let sets = reviewedSets, !sets.isEmpty else { return "No sets recorded. Add only sets supported by the source." }
+        for (index, set) in sets.enumerated() {
+            let label = "Set \(index + 1)"
+            if !set.isValid { return "\(label): check reps (1–999), load (0–9999) and unit (lb or kg)." }
+            if set.reps == nil { return "\(label): reps are unknown. Keep them blank unless verified." }
+            if set.load == nil { return "\(label): load is unknown. Zero must be explicitly verified." }
+            if set.unit == nil { return "\(label): choose the verified load unit, lb or kg." }
+        }
+        guard isValid else { return "Check the workout date (YYYY-MM-DD) and remove duplicate set rows." }
+        guard now.timeIntervalSince1970.isFinite else { return "Current date is unavailable. Confirmation cannot be checked." }
         let formatter = DateFormatter(); formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.calendar = Calendar(identifier: .gregorian); formatter.timeZone = TimeZone(secondsFromGMT: 0)
         formatter.dateFormat = "yyyy-MM-dd"
-        return day <= formatter.string(from: now)
+        guard day <= formatter.string(from: now) else { return "The workout date is in the future. It cannot confirm completed activity." }
+        return nil
+    }
+    public func canConfirmQuantities(now: Date = Date()) -> Bool {
+        quantityConfirmationBlocker(now: now) == nil
     }
     @discardableResult public mutating func confirmQuantities(now: Date = Date()) -> Bool {
         guard canConfirmQuantities(now: now) else { confirmedQuantities = nil; return false }

@@ -100,3 +100,9 @@ Source completion is distinct from verified behavior. Local Linux cannot run Xco
 - [x] Synthetic edit/revert/persistence and unchanged-binding regressions; prior history/import coverage retained.
 - [ ] Apply confirmed sets to history with units, deduplication and correction/revocation safeguards.
 - [ ] Vet existing critical BF-T17 edit/revert refinement in November 24 checkpoint before native execution.
+
+## November 25 increment
+- [x] Resolved November 24 CI: 105 tests, zero failures and unsigned SDK compilation succeeded.
+- [x] Actionable lifting confirmation reasons identify unresolved set/field without inventing values; shared UI/core gate and synthetic regressions.
+- [ ] Apply confirmed sets to history with unit/deduplication/correction safeguards.
+- [ ] Owner-vet BF-T17 field-guidance/accessibility refinement before native execution.
