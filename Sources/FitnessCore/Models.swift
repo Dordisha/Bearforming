@@ -314,7 +314,18 @@ public struct LiftingOccurrence: Codable, Identifiable, Equatable {
     // the stored snapshot because property observers do not run during init.
     public var id = UUID() { didSet { if id != oldValue { clearQuantityConfirmation() } } }
     public var day = "" { didSet { if day != oldValue { clearQuantityConfirmation() } } } // Explicit YYYY-MM-DD; blank is unresolved.
-    public var movement = "" { didSet { if movement != oldValue { clearQuantityConfirmation() } } }
+    public var movement = "" { didSet {
+        if movement != oldValue { catalogExerciseName = nil; clearQuantityConfirmation() }
+    } }
+    /// An explicit review choice, never a fuzzy match inferred from source text.
+    public private(set) var catalogExerciseName: String? {
+        didSet { if catalogExerciseName != oldValue { clearQuantityConfirmation() } }
+    }
+    @discardableResult public mutating func matchCatalogExercise(_ name: String?) -> Bool {
+        guard name == nil || ExerciseCatalog.all.contains(where: { $0.name == name }) else { return false }
+        catalogExerciseName = name
+        return true
+    }
     public var status = "unclear" { didSet { if status != oldValue { clearQuantityConfirmation() } } }
     public var reviewedSets: [LiftingSetReview]? { didSet { if reviewedSets != oldValue { clearQuantityConfirmation() } } }
     private var confirmedQuantities: Data?
@@ -329,6 +340,9 @@ public struct LiftingOccurrence: Codable, Identifiable, Equatable {
     /// Explain the first unresolved review gate without filling unknown evidence.
     public func quantityConfirmationBlocker(now: Date = Date()) -> String? {
         if movement.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return "Enter the movement from the source." }
+        if let name = catalogExerciseName, !ExerciseCatalog.all.contains(where: { $0.name == name }) {
+            return "The catalog match is unavailable. Clear it or choose a verified match."
+        }
         if day.isEmpty { return "Workout date is unknown. Leave it unresolved unless the source confirms the day." }
         if status != "completed" { return "Only completed activity can be confirmed. Keep planned, skipped or unclear activity as notes." }
         guard let sets = reviewedSets, !sets.isEmpty else { return "No sets recorded. Add only sets supported by the source." }

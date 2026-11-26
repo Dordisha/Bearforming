@@ -106,3 +106,8 @@ Source completion is distinct from verified behavior. Local Linux cannot run Xco
 - [x] Actionable lifting confirmation reasons identify unresolved set/field without inventing values; shared UI/core gate and synthetic regressions.
 - [ ] Apply confirmed sets to history with unit/deduplication/correction safeguards.
 - [ ] Owner-vet BF-T17 field-guidance/accessibility refinement before native execution.
+
+## November 26 increment
+- [x] Explicit catalog matching for lifting review, unknown default, preserved source wording and correction-triggered invalidation; synthetic persistence/legacy/isolation regressions.
+- [ ] Apply confirmed history with unit/date precision, deduplication and correction/revocation safeguards.
+- [ ] Vet BF-T17 catalog matching/clear/correction/accessibility refinement before native execution.

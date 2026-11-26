@@ -157,6 +157,14 @@ private struct LiftingOccurrenceReview: View {
                     TextField("Workout day YYYY-MM-DD (optional)", text: $occurrence.day)
                         .textInputAutocapitalization(.never).autocorrectionDisabled()
                     TextField("Movement from source", text: $occurrence.movement)
+                    Picker("Catalog exercise", selection: Binding(
+                        get: { occurrence.catalogExerciseName ?? "" },
+                        set: { occurrence.matchCatalogExercise($0.isEmpty ? nil : $0) }
+                    )) {
+                        Text("Not matched / unsure").tag("")
+                        ForEach(ExerciseCatalog.all) { option in Text(option.name).tag(option.name) }
+                    }
+                    Text("Match only if this is the same movement. Keep the source wording above; changing it clears the match. Unmatched notes remain reviewable and do not affect progression.").font(.caption)
                     Picker("Occurrence status", selection: $occurrence.status) {
                         ForEach(LiftingOccurrence.statuses, id: \.self) { Text($0) }
                     }

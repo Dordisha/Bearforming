@@ -101,6 +101,46 @@ final class LiftingQuantityTests: XCTestCase {
         }
         XCTAssertNotNil(occurrence().quantityConfirmationBlocker(now: Date(timeIntervalSince1970: .nan)))
     }
+    func testCatalogMatchIsExplicitAndPersistsWithoutChangingSourceOrHistory() throws {
+        var value = occurrence(); let source = value.movement
+        XCTAssertNil(value.catalogExerciseName)
+        let name = ExerciseCatalog.all[0].name
+        XCTAssertTrue(value.matchCatalogExercise(name))
+        XCTAssertEqual(value.movement, source)
+        XCTAssertTrue(value.confirmQuantities(now: now))
+        var entry = JourneyEntry(); entry.originalText = "Synthetic original"; entry.category = "Lifting"
+        XCTAssertTrue(entry.setLiftingOccurrences([value]))
+        var state = FitnessState(); state.preparePreviewIfNeeded(now: now); let before = state
+        state.saveJourneyEntry(entry)
+        let restored = try JSONDecoder().decode(FitnessState.self, from: JSONEncoder().encode(state))
+        let saved = restored.entries![0].liftingOccurrences![0]
+        XCTAssertEqual(saved.catalogExerciseName, name); XCTAssertEqual(saved.movement, source)
+        XCTAssertTrue(saved.quantitiesAreConfirmed)
+        XCTAssertEqual(restored.history, before.history); XCTAssertEqual(restored.plannedExercises, before.plannedExercises)
+        XCTAssertEqual(restored.entries![0].originalText, entry.originalText)
+    }
+    func testCatalogCorrectionClearsMatchAndConfirmationWithoutInferringReplacement() {
+        var value = occurrence(); let first = ExerciseCatalog.all[0].name
+        XCTAssertTrue(value.matchCatalogExercise(first)); XCTAssertTrue(value.confirmQuantities(now: now))
+        XCTAssertTrue(value.matchCatalogExercise(first)); XCTAssertTrue(value.quantitiesAreConfirmed)
+        XCTAssertFalse(value.matchCatalogExercise("Invented catalog movement"))
+        XCTAssertEqual(value.catalogExerciseName, first); XCTAssertTrue(value.quantitiesAreConfirmed)
+        XCTAssertTrue(value.matchCatalogExercise(ExerciseCatalog.all[1].name)); XCTAssertFalse(value.quantitiesAreConfirmed)
+        XCTAssertTrue(value.confirmQuantities(now: now))
+        value.movement = "Corrected source wording"
+        XCTAssertNil(value.catalogExerciseName); XCTAssertFalse(value.quantitiesAreConfirmed)
+        value.movement = "Synthetic movement"
+        XCTAssertNil(value.catalogExerciseName); XCTAssertFalse(value.quantitiesAreConfirmed)
+        XCTAssertTrue(value.matchCatalogExercise(first)); XCTAssertTrue(value.confirmQuantities(now: now))
+        XCTAssertTrue(value.matchCatalogExercise(nil)); XCTAssertFalse(value.quantitiesAreConfirmed)
+    }
+    func testLegacyReviewWithoutCatalogMatchStillDecodesAndCanRemainUnmatched() throws {
+        var value = occurrence(); XCTAssertTrue(value.confirmQuantities(now: now))
+        let data = try JSONEncoder().encode(value)
+        XCTAssertFalse(String(decoding: data, as: UTF8.self).contains("catalogExerciseName"))
+        let decoded = try JSONDecoder().decode(LiftingOccurrence.self, from: data)
+        XCTAssertNil(decoded.catalogExerciseName); XCTAssertTrue(decoded.quantitiesAreConfirmed)
+    }
     func testUnknownAndInvalidValuesNeverBecomeConfirmedDefaults() {
         var value = occurrence()
         for sets in [nil, [], [LiftingSetReview()]] as [[LiftingSetReview]?] {
