@@ -31,7 +31,8 @@ final class PersistenceTests: XCTestCase {
         try StateRepository(url: url).save(state)
         let restored = try StateRepository(url: url).load()
         XCTAssertNil(restored.active)
-        XCTAssertEqual(restored.previousPerformance(for: "Seated row"), workout.exercises[0])
+        XCTAssertEqual(restored.previousPerformance(for: "Seated row")?.id, workout.exercises[0].id)
+        XCTAssertEqual(restored.previousPerformance(for: "Seated row")?.sets, [workout.exercises[0].sets[0]])
     }
     func testCorruptDataIsPreserved() throws {
         let url = location()

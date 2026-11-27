@@ -30,11 +30,11 @@ struct WorkoutView: View {
                                         Text("\(si + 1)").foregroundStyle(.secondary)
                                         LiveSetField(title: "Reps", value: Double(set.reps), maximum: 999, integerOnly: true) { value in
                                             store.update { $0.active?.exercises[ei].sets[si].reps = Int(value) }
-                                        }.focused($keyboardFocused)
+                                        }.focused($keyboardFocused).disabled(exercise.remainingSetsSkipped == true && set.completedAt == nil)
                                         Text("×")
                                         LiveSetField(title: "Weight in pounds", value: set.weight, maximum: 9999, integerOnly: false) { value in
                                             store.update { $0.active?.exercises[ei].sets[si].weight = value }
-                                        }.focused($keyboardFocused)
+                                        }.focused($keyboardFocused).disabled(exercise.remainingSetsSkipped == true && set.completedAt == nil)
                                         Text("lb").font(.caption)
                                         Button {
                                             store.update { state in
@@ -47,16 +47,23 @@ struct WorkoutView: View {
                                                 }
                                             }
                                         } label: { Image(systemName: set.completedAt == nil ? "circle" : "checkmark.circle.fill").font(.title2) }
-                                        .disabled(set.completedAt == nil && set.reps < 1)
+                                        .disabled(set.completedAt == nil && (set.reps < 1 || exercise.remainingSetsSkipped == true))
                                         .accessibilityLabel(set.completedAt == nil ? "Complete set" : "Undo set")
                                     }.buttonStyle(.borderless)
                                 }
+                                Button(exercise.remainingSetsSkipped == true ? "Restore remaining sets" : "Skip remaining sets") {
+                                    store.update { $0.setRemainingSetsSkipped(exerciseID: exercise.id, skipped: exercise.remainingSetsSkipped != true) }
+                                }
+                                if exercise.remainingSetsSkipped == true {
+                                    Text("Remaining sets skipped. Completed sets and the authored plan are retained.").font(.caption)
+                                }
                                 Button("Add set") { store.update { $0.active?.exercises[ei].sets.append(LoggedSet()) } }
+                                    .disabled(exercise.remainingSetsSkipped == true)
                                 Menu("Substitute exercise") {
                                     ForEach(["Leg press", "Goblet squat", "Dumbbell bench press", "Seated row", "Lat pulldown", "Leg curl", "Leg extension"].filter { $0 != exercise.name }, id: \.self) { name in
                                         Button(name) { store.update { $0.active?.exercises[ei] = Exercise(name: name) } }
                                     }
-                                }.disabled(exercise.sets.contains { $0.completedAt != nil })
+                                }.disabled(exercise.remainingSetsSkipped == true || exercise.sets.contains { $0.completedAt != nil })
                                 Text("Substitution is available before completing sets for this exercise.").font(.caption).foregroundStyle(.secondary)
                             } header: { Text(exercise.name) }
                         }
@@ -79,10 +86,7 @@ struct WorkoutView: View {
                 }
             }
             .confirmationDialog("Save this workout to Journey?", isPresented: $finishConfirmation, titleVisibility: .visible) {
-                Button("Finish and save") { store.update { state in
-                    guard var finished = state.active else { return }
-                    finished.finishedAt = Date(); state.history.append(finished); state.active = nil; state.restUntil = nil
-                } }
+                Button("Finish and save") { store.update { $0.finishWorkout() } }
                 Button("Keep training", role: .cancel) {}
             }
         }
@@ -106,11 +110,8 @@ private struct LiveSetField: View {
                 .accessibilityLabel(title)
                 .onAppear { draft = display(value) }
                 .onChange(of: draft) { _, text in
-                    let separator = Locale.current.decimalSeparator ?? "."
-                    let normalized = text.replacingOccurrences(of: separator, with: ".")
-                    let parsed = text.isEmpty ? 0 : Double(normalized)
-                    guard let number = parsed, number.isFinite, number >= 0,
-                          number <= maximum, !integerOnly || number.rounded() == number else {
+                    guard let number = SetInput.parse(text, maximum: maximum, integerOnly: integerOnly,
+                                                     decimalSeparator: Locale.current.decimalSeparator ?? ".") else {
                         invalid = true
                         return
                     }
@@ -120,7 +121,7 @@ private struct LiveSetField: View {
                 .onChange(of: value) { _, newValue in
                     // Preserve partial decimal input such as "60." during typing.
                     let normalized = draft.replacingOccurrences(of: Locale.current.decimalSeparator ?? ".", with: ".")
-                    if (draft.isEmpty ? Optional(0.0) : Double(normalized)) != Optional(newValue) {
+                    if Double(normalized) != Optional(newValue) {
                         draft = display(newValue)
                     }
                 }
@@ -132,7 +133,7 @@ private struct LiveSetField: View {
     }
 
     private func display(_ number: Double) -> String {
-        number == 0 ? "" : (number.rounded() == number ? String(Int(number)) : String(number))
+        (number.rounded() == number ? String(Int(number)) : String(number))
             .replacingOccurrences(of: ".", with: Locale.current.decimalSeparator ?? ".")
     }
 }

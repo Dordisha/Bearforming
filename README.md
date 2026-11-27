@@ -3,7 +3,7 @@
 Open **Bearforming.xcodeproj**, select the **Bearforming** scheme and an iPhone simulator, then Run. Opening Package.swift builds only FitnessCore.
 
 ## Current upgrade
-- Today: saved time, equipment, goal and readiness check-in. Deterministic starter planner excludes exercises logged in the preceding 48 hours; adjusts exercise count for short sessions or low energy. Goals are captured, but goal-specific progression is not implemented.
+- Today: saved time, equipment, goal and readiness check-in. Planner offers up to six exercises by default (seven configurable), subject to time, equipment and readiness. Completed set timestamps drive the 48-hour recent-exercise exclusion, including saved active sets. Familiar logged exercises are preferred within each movement group. Reviewed completed Cycling entries within 48 hours prompt a fatigue check without guessing ride intensity or changing warmup/volume. Goals are captured, but goal-specific progression is not implemented.
 - Workout: editable sets, complete/undo, previous performance, substitutions, absolute rest deadline, synchronous atomic saves. Valid text edits save immediately; invalid input stays visibly unsaved.
 - Journey: lifting summaries and dated free-text weight, cycling, measurement and milestone records; edit/delete and review status.
 - Import: choose conversations.json (up to 50 MB). Fitness-keyword messages become pending review records. Original text, raw timestamp, conversation link, message ID and role are retained. All branches may be extracted; records deduplicate by conversation/message identity. Assistant messages default to advice; user messages default to unclear. Review dates, units and completion manually. Imported free text does not drive load or workout-volume calculations.
