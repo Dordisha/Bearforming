@@ -125,6 +125,21 @@ public struct FitnessState: Codable, Equatable {
         }
         entries = saved
     }
+    /// Day-scoped review evidence supports familiarity only, never recovery or loads.
+    /// Set membership prevents repeated sources/rows from multiplying influence.
+    public func reviewedFamiliarExerciseNames(now: Date = Date()) -> Set<String> {
+        var names = Set<String>()
+        for entry in entries ?? [] where entry.approved && entry.status == "completed"
+            && ["Lifting", "Imported conversation"].contains(entry.category)
+            && (entry.originalRole == nil || entry.originalRole == "user") {
+            for occurrence in entry.liftingOccurrences ?? [] {
+                guard occurrence.useForFamiliarity == true, occurrence.quantitiesAreConfirmed,
+                      occurrence.canConfirmQuantities(now: now), let name = occurrence.catalogExerciseName else { continue }
+                names.insert(name)
+            }
+        }
+        return names
+    }
     public var plannedExercises: [Exercise]?
     /// Applies to the next draft only; nil preserves the usual profile focus.
     public var sessionFocus: String?
@@ -328,9 +343,16 @@ public struct LiftingOccurrence: Codable, Identifiable, Equatable {
     }
     public var status = "unclear" { didSet { if status != oldValue { clearQuantityConfirmation() } } }
     public var reviewedSets: [LiftingSetReview]? { didSet { if reviewedSets != oldValue { clearQuantityConfirmation() } } }
+    public private(set) var useForFamiliarity: Bool?
+    @discardableResult public mutating func setFamiliarityUse(_ enabled: Bool, now: Date = Date()) -> Bool {
+        if !enabled { useForFamiliarity = nil; return true }
+        guard quantitiesAreConfirmed, canConfirmQuantities(now: now), catalogExerciseName != nil else { return false }
+        useForFamiliarity = true
+        return true
+    }
     private var confirmedQuantities: Data?
     private var quantitySnapshot: Data? {
-        var copy = self; copy.confirmedQuantities = nil
+        var copy = self; copy.confirmedQuantities = nil; copy.useForFamiliarity = nil
         let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
         return try? encoder.encode(copy)
     }
@@ -365,10 +387,10 @@ public struct LiftingOccurrence: Codable, Identifiable, Equatable {
         quantityConfirmationBlocker(now: now) == nil
     }
     @discardableResult public mutating func confirmQuantities(now: Date = Date()) -> Bool {
-        guard canConfirmQuantities(now: now) else { confirmedQuantities = nil; return false }
+        guard canConfirmQuantities(now: now) else { clearQuantityConfirmation(); return false }
         confirmedQuantities = quantitySnapshot; return quantitiesAreConfirmed
     }
-    public mutating func clearQuantityConfirmation() { confirmedQuantities = nil }
+    public mutating func clearQuantityConfirmation() { confirmedQuantities = nil; useForFamiliarity = nil }
     public static let statuses = ["unclear", "planned", "completed", "skipped"]
     public init() {}
     public var isValid: Bool {
@@ -549,7 +571,8 @@ public struct TrainingPlan {
         let completed = logged.flatMap(\.exercises).filter { exercise in
             exercise.sets.contains { set in set.completedAt.map { $0 <= now } ?? false }
         }
-        let familiar = Set(completed.map(\.name))
+        let reviewedFamiliar = state.reviewedFamiliarExerciseNames(now: now)
+        let familiar = Set(completed.map(\.name)).union(reviewedFamiliar)
         let trained = Set(completed.filter { exercise in
             exercise.sets.contains { set in
                 guard let date = set.completedAt else { return false }
@@ -585,7 +608,7 @@ public struct TrainingPlan {
         explanation = "\(exercises.count) exercises within your \(profile.minutes)-minute budget. Estimates allow 4 seconds per rep, 90-second rests and transitions; actual time varies. Warmup is \(profile.warmedUp == true ? "already completed" : "5 minutes, counted separately")."
         if reduced { explanation += " Reduced sets and accessories for today's feedback." }
         if exercises.contains(where: { familiar.contains($0.name) }) {
-            explanation += " Familiar exercises are prioritized within each movement group using completed sets in your log; past weights are not prescribed." }
+            explanation += " Familiar exercises are prioritized within each movement group using completed logged sets or explicitly enabled reviewed history; past weights are not prescribed." }
         if recentCycling {
             explanation += " Your reviewed Journey records include completed cycling within 48 hours. Check today's energy and leg fatigue; ride intensity is not used to automatically change sets or warmup." }
         if !trained.isEmpty { explanation += " Recently logged exercises are excluded; related muscles may still overlap." }
@@ -629,6 +652,9 @@ public struct SessionPreviewSummary {
                 && age >= 0 && age < 172800
         }) {
             text += " Your reviewed records include completed cycling within 48 hours. Check your energy and leg fatigue; ride intensity is not used to automatically change this draft or mark warmup complete."
+        }
+        if !names.isDisjoint(with: state.reviewedFamiliarExerciseNames(now: now)) {
+            text += " This draft includes movements you explicitly enabled from reviewed lifting history. That evidence supports familiarity only, not recovery timing or prescribed weights; your draft has not changed."
         }
         explanation = text
     }

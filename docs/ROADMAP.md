@@ -111,3 +111,9 @@ Source completion is distinct from verified behavior. Local Linux cannot run Xco
 - [x] Explicit catalog matching for lifting review, unknown default, preserved source wording and correction-triggered invalidation; synthetic persistence/legacy/isolation regressions.
 - [ ] Apply confirmed history with unit/date precision, deduplication and correction/revocation safeguards.
 - [ ] Vet BF-T17 catalog matching/clear/correction/accessibility refinement before native execution.
+
+## November 27 increment
+- [x] Explicit opted-in reviewed lifting familiarity influences new suggestions within existing movement groups; pending/advice/unknown records excluded, corrections revoke use, saved drafts preserved.
+- [x] Synthetic persistence, isolation, gating, revocation and duplicate-name influence regressions.
+- [ ] Numeric history application remains gated on unit/date precision and source-conflict reconciliation; familiarity does not prescribe loads or infer recovery timing.
+- [ ] Vet BF-T17 familiarity opt-in/revocation/reset refinement before native execution.

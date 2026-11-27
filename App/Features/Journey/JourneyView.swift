@@ -205,6 +205,11 @@ private struct LiftingQuantityReview: View {
                 get: { occurrence.quantitiesAreConfirmed },
                 set: { value in if value { occurrence.confirmQuantities() } else { occurrence.clearQuantityConfirmation() } }
             )).disabled(!occurrence.canConfirmQuantities())
+            Toggle("Use this movement as familiar", isOn: Binding(
+                get: { occurrence.useForFamiliarity == true },
+                set: { occurrence.setFamiliarityUse($0) }
+            )).disabled(!occurrence.quantitiesAreConfirmed || occurrence.catalogExerciseName == nil)
+            Text("Optional: after this record is reviewed and marked completed, use the matched movement when building a new suggestion. Existing drafts stay unchanged. Imported weights and dates do not set loads or recovery timing. Editing the occurrence clears this choice.").font(.caption)
             if let blocker = occurrence.quantityConfirmationBlocker() {
                 Text(blocker).font(.caption).accessibilityLabel("Confirmation unavailable. " + blocker)
             } else if !occurrence.quantitiesAreConfirmed {
